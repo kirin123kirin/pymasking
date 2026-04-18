@@ -3,9 +3,9 @@
 import re
 import calendar
 import unicodedata
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 try:
     import spacy as _spacy
@@ -113,11 +113,12 @@ _BUILDING_SUFFIXES = [
 ]
 _BUILDING_PAT = "|".join(re.escape(b) for b in sorted(_BUILDING_SUFFIXES, key=len, reverse=True))
 
-# ── 一般姓リスト（約100件） ───────────────────────────────────────
+# ── 一般姓リスト（約100件）────────────────────────────────────
+# 1文字姓（林・森・岡等）は単独語との誤検知が多いため意図的に除外
 _SURNAMES = [
     "佐藤", "鈴木", "高橋", "田中", "渡辺", "伊藤", "山本", "中村", "小林", "加藤",
-    "吉田", "山田", "佐々木", "山口", "松本", "井上", "木村", "林", "斎藤", "清水",
-    "山崎", "阿部", "森", "池田", "橋本", "山下", "石川", "中島", "前田", "藤田",
+    "吉田", "山田", "佐々木", "山口", "松本", "井上", "木村", "斎藤", "清水",
+    "山崎", "阿部", "池田", "橋本", "山下", "石川", "中島", "前田", "藤田",
     "小川", "後藤", "岡田", "長谷川", "村上", "近藤", "石井", "坂本", "遠藤", "青木",
     "藤井", "西村", "福田", "太田", "三浦", "原田", "中川", "松田", "岡本", "中野",
     "今村", "久保", "菅原", "武田", "小島", "工藤", "丸山", "上田", "横山", "大野",
@@ -125,6 +126,7 @@ _SURNAMES = [
     "川口", "松井", "岩崎", "小野", "田村", "野村", "川村", "星野",
     "藤原", "服部", "吉川", "土屋", "中山", "菊地", "谷口", "今井", "杉山", "水野",
     "大塚", "河野", "平野", "熊谷", "秋山", "栗原", "三田", "増田", "浜田", "西川",
+    "橘", "松岡", "新井", "辻", "和田", "福島", "大石", "原", "斉藤", "千葉",
 ]
 _SURNAME_PAT = "|".join(re.escape(s) for s in sorted(_SURNAMES, key=len, reverse=True))
 
@@ -143,6 +145,8 @@ _MONTHS_EN = (
 _KANJI_NUM = {"〇": "0", "一": "1", "二": "2", "三": "3", "四": "4",
               "五": "5", "六": "6", "七": "7", "八": "8", "九": "9"}
 
+_WAREKI_BASE = {"令和": 2018, "平成": 1988, "昭和": 1925, "大正": 1911, "明治": 1867}
+
 
 def _normalize(text: str) -> str:
     result = unicodedata.normalize("NFKC", text)
@@ -155,44 +159,79 @@ def _valid_date(year: int, month: int, day: int) -> bool:
     return 1 <= day <= calendar.monthrange(year, month)[1]
 
 
+# ── [修正1] 日付バリデーション ─────────────────────────────────
+
+def _validate_date_text(text: str) -> bool:
+    """マッチした文字列が実在する日付かを検証する。"""
+    norm = _normalize(text)
+
+    # 和暦年月日
+    m = re.match(r"(明治|大正|昭和|平成|令和)\s*(\d{1,3})年\s*(\d{1,2})月\s*(\d{1,2})日", norm)
+    if m:
+        y = _WAREKI_BASE.get(m.group(1), 0) + int(m.group(2))
+        return _valid_date(y, int(m.group(3)), int(m.group(4)))
+
+    # 西暦年月日
+    m = re.match(r"(\d{4})年\s*(\d{1,2})月\s*(\d{1,2})日", norm)
+    if m:
+        return _valid_date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+
+    # YYYY/M/D  YYYY-MM-DD  YYYY.MM.DD
+    m = re.match(r"(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})$", norm)
+    if m:
+        return _valid_date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+
+    # 8桁 YYYYMMDD
+    m = re.match(r"^(\d{4})(\d{2})(\d{2})$", norm)
+    if m:
+        return _valid_date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+
+    # 和暦省略形 R7.4.1
+    m = re.match(r"^[RHTSMrhtsmｒｈｔｓｍ](\d{1,2})\.(\d{1,2})\.(\d{1,2})$", norm)
+    if m:
+        return 1 <= int(m.group(2)) <= 12 and 1 <= int(m.group(3)) <= 31
+
+    # 月日のみ
+    m = re.match(r"^(\d{1,2})月(\d{1,2})日$", norm)
+    if m:
+        month, day = int(m.group(1)), int(m.group(2))
+        return 1 <= month <= 12 and 1 <= day <= 31
+
+    return True  # 検証できない形式はそのまま通す
+
+
 # ── 日付検出 ──────────────────────────────────────────────────
 
 def detect_dates(text: str) -> List[Detection]:
     results: List[Detection] = []
 
     raw_patterns = [
-        # 和暦（漢字）＋年月日
         r"(?:明治|大正|昭和|平成|令和)\s*\d{1,3}年\s*\d{1,2}月\s*\d{1,2}日",
-        # 西暦年月日（全角含む）
         r"[１２12][０-９0-9]{3}年\s*\d{1,2}月\s*\d{1,2}日",
-        # 英語月名 M D, Y
         r"(?:" + _MONTHS_EN + r")\s+\d{1,2},?\s+[12]\d{3}",
-        # 英語 D M Y
         r"\d{1,2}(?:st|nd|rd|th)?\s+(?:" + _MONTHS_EN + r")\s+[12]\d{3}",
-        # 和暦省略形 R7.4.1 / H30.3.31
         r"[RHTSMrhtsmｒｈｔｓｍ]\d{1,2}\.\d{1,2}\.\d{1,2}",
-        # YYYY/M/D
         r"[12]\d{3}/\d{1,2}/\d{1,2}",
-        # YYYY-MM-DD
         r"[12]\d{3}-\d{2}-\d{2}",
-        # YYYY.MM.DD
         r"[12]\d{3}\.\d{2}\.\d{2}",
-        # 8桁 YYYYMMDD
         r"(?<!\d)[12]\d{7}(?!\d)",
-        # 月日のみ
         r"\d{1,2}月\d{1,2}日",
     ]
 
     for pat in raw_patterns:
         for m in re.finditer(pat, text):
-            results.append(Detection(m.start(), m.end(), "日付", m.group()))
+            if _validate_date_text(m.group()):  # [修正1] バリデーション追加
+                results.append(Detection(m.start(), m.end(), "日付", m.group()))
 
     # MM/DD（文脈依存）
     for m in re.finditer(r"(?<!\d)\d{1,2}/\d{1,2}(?!\d)", text):
         cs = max(0, m.start() - _DATE_CTX_WIN)
         ce = min(len(text), m.end() + _DATE_CTX_WIN)
         if any(kw in text[cs:ce] for kw in _DATE_CONTEXT_KEYWORDS):
-            results.append(Detection(m.start(), m.end(), "日付", m.group()))
+            norm = _normalize(m.group())
+            parts = norm.split("/")
+            if len(parts) == 2 and 1 <= int(parts[0]) <= 12 and 1 <= int(parts[1]) <= 31:
+                results.append(Detection(m.start(), m.end(), "日付", m.group()))
 
     return results
 
@@ -229,8 +268,9 @@ def detect_persons_orgs(text: str) -> List[Detection]:
     for m in re.finditer(pat_c, text):
         results.append(Detection(m.start(), m.end(), "組織", m.group()))
 
-    # D: 既知姓 ＋ 漢字1〜3文字の名
-    pat_d = rf"({_SURNAME_PAT})([\u4E00-\u9FFF]{{1,3}})"
+    # D: 既知姓＋漢字1〜3文字の名
+    # [修正3] 後方に漢字が続く場合は複合語の可能性が高いため除外
+    pat_d = rf"({_SURNAME_PAT})([\u4E00-\u9FFF]{{1,3}})(?![\u4E00-\u9FFF])"
     for m in re.finditer(pat_d, text):
         results.append(Detection(m.start(), m.end(), "人物", m.group()))
 
@@ -244,24 +284,19 @@ _ADDR_BODY = r"[\u3040-\u9FFF\uFF00-\uFFEF0-9０-９a-zA-Z\-\s]{5,50}"
 def detect_addresses(text: str) -> List[Detection]:
     results: List[Detection] = []
 
-    # 〒XXX-XXXX 以降
     for m in re.finditer(r"〒\d{3}-\d{4}" + _ADDR_BODY, text):
         results.append(Detection(m.start(), m.end(), "住所", m.group(), preserved_prefix="〒"))
 
-    # 都道府県起点（都道府県名を残す）
     for m in re.finditer(rf"({_PREF_PAT})" + _ADDR_BODY, text):
         pref = m.group(1)
         results.append(Detection(m.start(), m.end(), "住所", m.group(), preserved_prefix=pref))
 
-    # 市区町村起点
     for m in re.finditer(r"[\u4E00-\u9FFF]{2,6}(?:市|区|町|村)[\u3040-\u9FFF0-9０-９\-]{3,30}", text):
         results.append(Detection(m.start(), m.end(), "住所", m.group()))
 
-    # 建物名
     for m in re.finditer(rf"[\u30A0-\u30FFa-zA-Z0-9\u4E00-\u9FFF]{{2,20}}(?:{_BUILDING_PAT})", text):
         results.append(Detection(m.start(), m.end(), "住所", m.group()))
 
-    # 地名言及（都道府県＋支社/支店 等）
     branch = "支社|支店|工場|営業所|事業所|出張所"
     for m in re.finditer(rf"(?:{_PREF_PAT})[\u4E00-\u9FFF]{{2,10}}({branch})", text):
         suf_len = len(m.group(1))
@@ -284,8 +319,8 @@ def detect_sns(text: str) -> List[Detection]:
     results: List[Detection] = []
     pats = [
         r"@[a-zA-Z0-9_\.]{2,30}",
-        r"https?://(?:www\.)?(?:twitter|x|instagram|github|discord|linkedin|facebook)\.com/\S{2,80}",
-        r"https?://\S{5,100}",
+        # [修正4] 汎用URLを除外し、既知SNSドメインのみに絞る
+        r"https?://(?:www\.)?(?:twitter|x|instagram|github|discord|linkedin|facebook|tiktok|youtube)\.com/\S{2,80}",
     ]
     for pat in pats:
         for m in re.finditer(pat, text):
@@ -330,21 +365,45 @@ def detect_patents(text: str) -> List[Detection]:
 # ── シリアル番号 ───────────────────────────────────────────────
 
 def detect_serials(text: str) -> List[Detection]:
-    pat = r"(?:S/N|SN|Serial\s*No\.?|製造番号|シリアル番号)\s*:?\s*[A-Z0-9\-]{5,20}"
-    return [Detection(m.start(), m.end(), "シリアル", m.group()) for m in re.finditer(pat, text, re.IGNORECASE)]
+    # [修正5] ラベルあり（厳密）＋ラベルなし（形式パターン）の2段階
+    results: List[Detection] = []
+
+    # ラベルあり
+    labeled = r"(?:S/N|SN|Serial\s*No\.?|製造番号|シリアル番号|シリアルNo\.?)\s*:?\s*([A-Z0-9][A-Z0-9\-]{4,19})"
+    for m in re.finditer(labeled, text, re.IGNORECASE):
+        results.append(Detection(m.start(), m.end(), "シリアル", m.group()))
+
+    # ラベルなし（大文字英字2字以上＋数字4桁以上のパターン）
+    unlabeled = r"(?<![A-Z0-9])(?:[A-Z]{2,4}-\d{4,12}|\d{4,12}-[A-Z]{2,4})(?![A-Z0-9])"
+    for m in re.finditer(unlabeled, text):
+        results.append(Detection(m.start(), m.end(), "シリアル", m.group()))
+
+    return results
 
 
 # ── 型番 ──────────────────────────────────────────────────────
 
 def detect_models(text: str) -> List[Detection]:
-    pat = r"(?:型番|品番|モデル(?:番号)?|Model\s*No\.?)\s*:?\s*[A-Z][A-Z0-9\-]{3,20}"
-    return [Detection(m.start(), m.end(), "型番", m.group()) for m in re.finditer(pat, text, re.IGNORECASE)]
+    results: List[Detection] = []
+
+    # ラベルあり
+    labeled = r"(?:型番|品番|モデル(?:番号)?|Model\s*No\.?|Part\s*No\.?)\s*:?\s*([A-Z][A-Z0-9\-]{3,20})"
+    for m in re.finditer(labeled, text, re.IGNORECASE):
+        results.append(Detection(m.start(), m.end(), "型番", m.group()))
+
+    # ラベルなし（英字1〜3字＋ハイフン＋数字4〜8桁の典型的型番）
+    unlabeled = r"(?<![A-Z0-9])([A-Z]{1,3}-\d{4,8})(?![A-Z0-9\-])"
+    for m in re.finditer(unlabeled, text):
+        results.append(Detection(m.start(), m.end(), "型番", m.group()))
+
+    return results
 
 
 # ── 金額 ──────────────────────────────────────────────────────
 
 def detect_amounts(text: str) -> List[Detection]:
-    pat = r"\d{1,3}(?:,\d{3})*(?:\.\d+)?(?:兆|億)?(?:\d{1,4}万)?(?:\d{1,3}千)?円"
+    # [修正2] カンマなし金額（5000円等）も検出できるよう修正
+    pat = r"(?:\d{1,3}(?:,\d{3})+|\d{2,})(?:\.\d+)?(?:兆|億|万|千)?円"
     return [Detection(m.start(), m.end(), "金額", m.group()) for m in re.finditer(pat, text)]
 
 
