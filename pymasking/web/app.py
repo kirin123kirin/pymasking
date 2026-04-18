@@ -16,7 +16,7 @@ _ALLOWED_EXTS = {
 
 
 def create_app() -> Flask:
-    app = Flask(__name__, template_folder="templates")
+    app = Flask(__name__, template_folder="templates", static_folder="static")
     app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB
 
     @app.route("/")

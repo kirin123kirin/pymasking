@@ -93,9 +93,39 @@ if errorlevel 1 (
     echo        GiNZA 単体モードで動作します。
 )
 
+rem ── favicon.ico 生成（Pillow で PNG→ICO 変換） ───────────────
+echo.
+echo [後処理1] favicon.ico を生成中...
+set FAVICON_PNG=%REPO_DIR%pymasking\web\static\favicon.png
+set FAVICON_ICO=%REPO_DIR%pymasking\web\static\favicon.ico
+if exist "%FAVICON_PNG%" (
+    "%PYTHON%" -c "from PIL import Image; img=Image.open(r'%FAVICON_PNG%'); img.save(r'%FAVICON_ICO%', format='ICO', sizes=[(256,256),(128,128),(64,64),(32,32),(16,16)])"
+    if errorlevel 1 (
+        echo [警告] favicon.ico の生成に失敗しました。
+    ) else (
+        echo favicon.ico を生成しました: %FAVICON_ICO%
+    )
+) else (
+    echo [警告] favicon.png が見つかりません: %FAVICON_PNG%
+    echo        pymasking\web\static\favicon.png に画像を配置してください。
+)
+
+rem ── start_web.lnk ショートカット作成（カスタムアイコン設定） ──
+echo.
+echo [後処理2] start_web.lnk ショートカットを作成中...
+if exist "%FAVICON_ICO%" (
+    powershell -NoProfile -Command ^
+      "$s=New-Object -Com WScript.Shell; $sc=$s.CreateShortcut('%REPO_DIR%start_web.lnk'); $sc.TargetPath='%REPO_DIR%start_web.bat'; $sc.WorkingDirectory='%REPO_DIR%'; $sc.IconLocation='%FAVICON_ICO%,0'; $sc.Description='pymasking Web UI'; $sc.Save()"
+    if errorlevel 1 (
+        echo [警告] ショートカットの作成に失敗しました。
+    ) else (
+        echo start_web.lnk を作成しました（カスタムアイコン付き）。
+    )
+)
+
 rem ── スタンドアロン配布不要ファイルを削除 ─────────────────────
 echo.
-echo [後処理] 不要ファイルを削除中...
+echo [後処理3] 不要ファイルを削除中...
 if exist "%REPO_DIR%scripts\download_model.py"  del /f /q "%REPO_DIR%scripts\download_model.py"
 if exist "%REPO_DIR%scripts\download_names.py"  del /f /q "%REPO_DIR%scripts\download_names.py"
 if exist "%REPO_DIR%data\JMnedict.xml.gz"        del /f /q "%REPO_DIR%data\JMnedict.xml.gz"
@@ -107,7 +137,7 @@ echo  セットアップ完了
 echo  Runtime        : %RUNTIME_DIR%
 echo  GINZA モデル   : %REPO_DIR%data\models\ja_ginza
 echo  start_cli.bat  : CLI 起動
-echo  start_web.bat  : Web UI 起動
+echo  start_web.bat  : Web UI 起動（start_web.lnk でカスタムアイコン）
 echo ============================================================
 pause
 exit /b 0
