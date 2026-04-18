@@ -10,7 +10,7 @@ from typing import List, Optional
 import os as _os
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-_DEFAULT_MODEL_DIR = _REPO_ROOT / "models" / "ja_ginza"
+_DEFAULT_MODEL_DIR = _REPO_ROOT / "data" / "models" / "ja_ginza"
 _MODEL_PATH = Path(_os.environ.get("GINZA_MODEL_PATH", str(_DEFAULT_MODEL_DIR)))
 _DATA_DIR = _REPO_ROOT / "data"
 
@@ -103,7 +103,7 @@ except Exception:
     _HAS_GINZA = False
     _nlp = None
 
-CUSTOM_DICT_PATH = Path(__file__).parent.parent.parent / "dict" / "custom_dict.txt"
+CUSTOM_DICT_PATH = Path(__file__).parent.parent.parent / "data" / "dict" / "custom_dict.txt"
 
 _custom_persons: List[str] = []
 _custom_orgs: List[str] = []

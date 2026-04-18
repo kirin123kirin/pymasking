@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DEST = REPO_ROOT / "models" / "ja_ginza"
+DEST = REPO_ROOT / "data" / "models" / "ja_ginza"
 
 
 def _install_ginza() -> None:
@@ -32,7 +32,7 @@ def _load_nlp():
 def main() -> None:
     if DEST.exists() and (DEST / "meta.json").exists():
         print(f"モデルは既に存在します: {DEST}")
-        print("再ダウンロードする場合は models/ja_ginza/ を削除してから再実行してください。")
+        print("再ダウンロードする場合は data/models/ja_ginza/ を削除してから再実行してください。")
         return
 
     print("ja_ginza モデルのパスを取得中...")

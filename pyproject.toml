@@ -26,9 +26,6 @@ dependencies = [
 nlp = ["ja-ginza>=5.2", "spacy>=3.7"]
 nlp-full = ["ja-ginza>=5.2", "spacy>=3.7", "sudachidict_full"]
 
-[project.scripts]
-pymasking = "pymasking.cli.main:cli"
-
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["pymasking*"]

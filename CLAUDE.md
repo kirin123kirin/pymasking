@@ -9,7 +9,7 @@
 ## インストール・起動
 
 ```bash
-# 初回セットアップ（依存インストール＋GiNZAモデルをリポジトリ内に保存）
+# 初回セットアップ（embedded Python ダウンロード＋依存インストール＋GiNZAモデル保存）
 setup_model.bat
 
 # CLI でマスキング実行
@@ -25,42 +25,46 @@ start_web.bat 8080      # ポート指定
 
 ## GiNZA モデルの管理
 
-- `setup_model.bat` を実行すると `models/ja_ginza/` にモデルがコピーされる
-- バッチファイルは起動時に `GINZA_MODEL_PATH=%REPO_DIR%models\ja_ginza` を設定する
+- `setup_model.bat` を実行すると `data/models/ja_ginza/` にモデルがコピーされる
+- バッチファイルは起動時に `GINZA_MODEL_PATH=%REPO_DIR%data\models\ja_ginza` を設定する
 - `detector.py` は `GINZA_MODEL_PATH` → システムインストール済み → フォールバックの順で試みる
-- `models/ja_ginza/` は `.gitignore` で除外されている（大容量のため）
-- モデルを再取得する場合は `models/ja_ginza/` を削除して `setup_model.bat` を再実行
+- `data/models/ja_ginza/` は `.gitignore` で除外されている（大容量のため）
+- モデルを再取得する場合は `data/models/ja_ginza/` を削除して `setup_model.bat` を再実行
 
 ## アーキテクチャ概要
 
 ```
 pymasking/
-├── models/ja_ginza/     # GiNZA モデル（setup_model.bat で生成、git 管理外）
 ├── data/
-│   ├── surnames.txt     # JMnedict 由来の姓リスト（setup_model.bat で生成）
-│   ├── given_names.txt  # JMnedict 由来の名リスト（setup_model.bat で生成）
-│   └── person_names.txt # JMnedict 由来の完全人名リスト（setup_model.bat で生成）
+│   ├── dict/
+│   │   └── custom_dict.txt  # カスタム辞書（手動編集）
+│   ├── models/ja_ginza/     # GiNZA モデル（setup_model.bat で生成、git 管理外）
+│   ├── surnames.txt         # JMnedict 由来の姓リスト（setup_model.bat で生成）
+│   ├── given_names.txt      # JMnedict 由来の名リスト（setup_model.bat で生成）
+│   └── person_names.txt     # JMnedict 由来の完全人名リスト（setup_model.bat で生成）
 ├── scripts/
-│   ├── download_model.py  # models/ja_ginza/ へモデルをコピーするスクリプト
-│   └── download_names.py  # JMnedict を取得して data/ へ保存するスクリプト
-├── core/
-│   ├── detector.py      # センシティブ情報の検出エンジン（GiNZA NLP + 正規表現）
-│   ├── masker.py        # mask_text / unmask_text — 検出→置換の統合処理
-│   ├── cipher/
-│   │   ├── pigpen.py    # ピッグペン暗号（可逆）: UTF-8 hex → Unicode記号
-│   │   ├── unique.py    # 一意性保持方式（不可逆）: UniqueCounter クラス
-│   │   └── blackout.py  # 伏字（不可逆）: 文字数分の●に置換
-│   └── extractor/
-│       ├── __init__.py  # process_file() — 拡張子で処理を振り分け
-│       ├── plaintext.py # テキストファイル（encoding 自動検出）
-│       ├── office.py    # docx / xlsx / pptx（テキスト置換）
-│       ├── image.py     # jpg / png（OCR → 黒塗り）
-│       ├── pdf_handler.py # PDF（PyMuPDF でテキスト位置検索 → 黒矩形）
-│       └── clipboard.py # クリップボード読み取り・一時ファイル保存
-├── cli/main.py          # Click ベース CLI（mask / unmask / web コマンド）
-└── web/
-    ├── app.py           # Flask アプリ（create_app() ファクトリ）
-    └── templates/index.html  # シングルページ UI
+│   ├── runtime/             # Python 3.12.10 embedded（setup_model.bat で生成、git 管理外）
+│   ├── download_model.py    # data/models/ja_ginza/ へモデルをコピーするスクリプト
+│   └── download_names.py    # JMnedict を取得して data/ へ保存するスクリプト
+├── pymasking/
+│   ├── core/
+│   │   ├── detector.py      # センシティブ情報の検出エンジン（GiNZA NLP + 正規表現）
+│   │   ├── masker.py        # mask_text / unmask_text — 検出→置換の統合処理
+│   │   ├── cipher/
+│   │   │   ├── pigpen.py    # ピッグペン暗号（可逆）: UTF-8 hex → Unicode記号
+│   │   │   ├── unique.py    # 一意性保持方式（不可逆）: UniqueCounter クラス
+│   │   │   └── blackout.py  # 伏字（不可逆）: 文字数分の●に置換
+│   │   └── extractor/
+│   │       ├── __init__.py  # process_file() — 拡張子で処理を振り分け
+│   │       ├── plaintext.py # テキストファイル（encoding 自動検出）
+│   │       ├── office.py    # docx / xlsx / pptx（テキスト置換）
+│   │       ├── image.py     # jpg / png（OCR → 黒塗り）
+│   │       ├── pdf_handler.py # PDF（PyMuPDF でテキスト位置検索 → 黒矩形）
+│   │       └── clipboard.py # クリップボード読み取り・一時ファイル保存
+│   ├── cli/main.py          # Click ベース CLI（mask / unmask / web コマンド）
+│   └── web/
+│       ├── app.py           # Flask アプリ（create_app() ファクトリ）
+│       └── templates/index.html  # シングルページ UI
 ```
 
 ### 処理フロー
@@ -102,7 +106,7 @@ pymasking/
 
 ### カスタム辞書
 
-`dict/custom_dict.txt` にタブ区切りで語と種別を登録すると固有名詞を検出できる。
+`data/dict/custom_dict.txt` にタブ区切りで語と種別を登録すると固有名詞を検出できる。
 
 ```
 山田太郎	person
