@@ -1,5 +1,12 @@
-"""インストール済み ja_ginza モデルをリポジトリ内の models/ja_ginza/ へコピーする。"""
+"""インストール済み ja_ginza モデルをリポジトリ内の data/models/ja_ginza/ へコピーする。
 
+spacy.load() は使わない。
+設定バリデーション（confection の split_mode=None 問題）を完全に回避するため、
+importlib でパッケージのパスを直接取得する。
+"""
+
+import importlib
+import importlib.util
 import shutil
 import subprocess
 import sys
@@ -17,27 +24,28 @@ def _install_ginza() -> None:
     )
 
 
-def _load_nlp():
-    import spacy
-    try:
-        return spacy.load("ja_ginza")
-    except OSError:
-        _install_ginza()
-        import importlib
-        importlib.invalidate_caches()
-        import spacy as spacy2
-        return spacy2.load("ja_ginza")
+def _find_ginza_path() -> Path:
+    """spacy.load() を経由せず ja_ginza パッケージのディレクトリを返す。"""
+    spec = importlib.util.find_spec("ja_ginza")
+    if spec is None or spec.origin is None:
+        raise RuntimeError("ja_ginza が見つかりません。")
+    return Path(spec.origin).parent
 
 
 def main() -> None:
     if DEST.exists() and (DEST / "meta.json").exists():
         print(f"モデルは既に存在します: {DEST}")
-        print("再ダウンロードする場合は data/models/ja_ginza/ を削除してから再実行してください。")
+        print("再コピーする場合は data/models/ja_ginza/ を削除してから再実行してください。")
         return
 
     print("ja_ginza モデルのパスを取得中...")
-    nlp = _load_nlp()
-    src = Path(nlp.path)
+    try:
+        src = _find_ginza_path()
+    except RuntimeError:
+        _install_ginza()
+        importlib.invalidate_caches()
+        src = _find_ginza_path()
+
     print(f"コピー元: {src}")
     print(f"コピー先: {DEST}")
 
