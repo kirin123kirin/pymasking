@@ -53,12 +53,13 @@ def create_app() -> Flask:
         if mode not in ("blackout", "unique", "pigpen"):
             return jsonify({"error": "不正な mode"}), 400
 
-        ext = Path(f.filename).suffix.lower() if f.filename else ""
-        if ext not in _ALLOWED_EXTS:
+        filename = Path(f.filename).name if f.filename else ""
+        ext = Path(filename).suffix.lower()
+        if not filename or ext not in _ALLOWED_EXTS:
             return jsonify({"error": f"未対応の形式: {ext}"}), 400
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            src = Path(tmpdir) / f.filename
+            src = Path(tmpdir) / filename
             f.save(src)
 
             from pymasking.core.extractor import process_file

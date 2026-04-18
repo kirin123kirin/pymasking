@@ -86,7 +86,7 @@ def process_image_data(img, mode: str = "blackout") -> "Image":
     if not sensitive:
         return img
 
-    boxes = []
+    boxes: List[Tuple[int, int, int, int]] = []
     for i, word in enumerate(words):
         if not word.strip():
             continue

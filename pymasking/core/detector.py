@@ -144,6 +144,7 @@ class Detection:
     def mask_text(self) -> str:
         s = len(self.preserved_prefix)
         e = len(self.text) - len(self.preserved_suffix) if self.preserved_suffix else len(self.text)
+        e = max(s, e)
         return self.text[s:e]
 
     @property
@@ -152,7 +153,7 @@ class Detection:
 
     @property
     def mask_end(self) -> int:
-        return self.end - len(self.preserved_suffix)
+        return max(self.mask_start, self.end - len(self.preserved_suffix))
 
 
 # ── 都道府県 ──────────────────────────────────────────────────
@@ -318,8 +319,11 @@ def detect_dates(text: str) -> List[Detection]:
         if any(kw in text[cs:ce] for kw in _DATE_CONTEXT_KEYWORDS):
             norm = _normalize(m.group())
             parts = norm.split("/")
-            if len(parts) == 2 and 1 <= int(parts[0]) <= 12 and 1 <= int(parts[1]) <= 31:
-                results.append(Detection(m.start(), m.end(), "日付", m.group()))
+            try:
+                if len(parts) == 2 and 1 <= int(parts[0]) <= 12 and 1 <= int(parts[1]) <= 31:
+                    results.append(Detection(m.start(), m.end(), "日付", m.group()))
+            except ValueError:
+                pass
 
     return results
 
@@ -349,7 +353,7 @@ def detect_persons_orgs(text: str) -> List[Detection]:
     # B: 役職・敬称の直前テキスト
     pat_b = rf"([\u3040-\u9FFF]{{1,6}})(?:{_TITLE_PAT})"
     for m in re.finditer(pat_b, text):
-        results.append(Detection(m.start(), m.start() + len(m.group(1)), "人物", m.group(1)))
+        results.append(Detection(m.start(1), m.end(1), "人物", m.group(1)))
 
     # C: 組織名サフィックス
     pat_c = rf"[\u4E00-\u9FFF\u30A0-\u30FFa-zA-Z]{{2,20}}(?:{_ORG_SUFFIX_PAT})"
@@ -387,9 +391,7 @@ def detect_addresses(text: str) -> List[Detection]:
 
     branch = "支社|支店|工場|営業所|事業所|出張所"
     for m in re.finditer(rf"(?:{_PREF_PAT})[\u4E00-\u9FFF]{{2,10}}({branch})", text):
-        suf_len = len(m.group(1))
-        suf = text[m.end() - suf_len:m.end()]
-        results.append(Detection(m.start(), m.end(), "住所", m.group(), preserved_suffix=suf))
+        results.append(Detection(m.start(), m.end(), "住所", m.group(), preserved_suffix=m.group(1)))
 
     return results
 

@@ -44,7 +44,11 @@ def main() -> None:
     DEST.parent.mkdir(parents=True, exist_ok=True)
     if DEST.exists():
         shutil.rmtree(DEST)
-    shutil.copytree(str(src), str(DEST))
+    try:
+        shutil.copytree(str(src), str(DEST))
+    except Exception as e:
+        print(f"[エラー] モデルのコピーに失敗しました: {e}")
+        sys.exit(1)
     print("完了。")
     print(f"\n環境変数 GINZA_MODEL_PATH={DEST}")
 
