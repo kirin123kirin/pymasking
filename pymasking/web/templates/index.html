@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pymasking</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", sans-serif; background: #f4f6f8; color: #333; }
+  header { background: #1a1a2e; color: #fff; padding: 16px 24px; font-size: 1.4rem; font-weight: 700; }
+  main { max-width: 900px; margin: 32px auto; padding: 0 16px; }
+  .card { background: #fff; border-radius: 8px; padding: 24px; margin-bottom: 24px;
+          box-shadow: 0 2px 8px rgba(0,0,0,.08); }
+  h2 { font-size: 1.1rem; margin-bottom: 16px; color: #1a1a2e; }
+  label { display: block; font-size: .85rem; color: #555; margin-bottom: 4px; }
+  textarea { width: 100%; height: 160px; border: 1px solid #cdd; border-radius: 6px;
+             padding: 10px; font-size: .9rem; resize: vertical; font-family: inherit; }
+  .row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 12px; }
+  select, input[type=file] { padding: 7px 10px; border: 1px solid #cdd; border-radius: 6px;
+                              font-size: .9rem; background: #fff; }
+  button { padding: 8px 20px; border: none; border-radius: 6px; font-size: .9rem; cursor: pointer;
+           font-weight: 600; }
+  .btn-primary { background: #4361ee; color: #fff; }
+  .btn-primary:hover { background: #3451d1; }
+  .btn-secondary { background: #e9ecef; color: #333; }
+  .btn-secondary:hover { background: #dee2e6; }
+  .btn-danger  { background: #e63946; color: #fff; }
+  .result-box { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;
+                padding: 12px; font-size: .9rem; white-space: pre-wrap; word-break: break-all;
+                min-height: 60px; max-height: 300px; overflow-y: auto; margin-top: 12px; }
+  .drop-zone { border: 2px dashed #aaa; border-radius: 8px; padding: 32px;
+               text-align: center; color: #888; transition: background .2s; cursor: pointer; }
+  .drop-zone.over { background: #eef2ff; border-color: #4361ee; }
+  .paste-zone { border: 2px dashed #aaa; border-radius: 8px; padding: 16px;
+                text-align: center; color: #888; cursor: pointer; }
+  .paste-zone.over { background: #eef2ff; }
+  #paste-preview { max-width: 100%; max-height: 300px; display: none; margin-top: 8px; border-radius: 6px; }
+  .tabs { display: flex; gap: 0; border-bottom: 2px solid #dee2e6; margin-bottom: 20px; }
+  .tab { padding: 8px 20px; cursor: pointer; border-radius: 6px 6px 0 0; font-size: .9rem; }
+  .tab.active { background: #4361ee; color: #fff; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .status { font-size: .82rem; color: #666; margin-top: 6px; }
+  .status.ok { color: #2d6a4f; }
+  .status.err { color: #e63946; }
+</style>
+</head>
+<body>
+<header>🔒 pymasking — 個人情報マスキングツール</header>
+<main>
+
+  <!-- タブ切り替え -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('text')">テキスト</div>
+    <div class="tab" onclick="switchTab('file')">ファイル</div>
+    <div class="tab" onclick="switchTab('clipboard')">クリップボード画像</div>
+  </div>
+
+  <!-- ── テキストタブ ── -->
+  <div id="tab-text" class="tab-content active">
+    <div class="card">
+      <h2>テキストマスキング</h2>
+      <div class="row">
+        <div>
+          <label>方式</label>
+          <select id="text-mode">
+            <option value="blackout">伏字（●）</option>
+            <option value="unique">一意性保持</option>
+            <option value="pigpen">ピッグペン暗号</option>
+          </select>
+        </div>
+        <button class="btn-primary" onclick="maskText()">マスキング実行</button>
+        <button class="btn-secondary" onclick="unmaskText()">復号（ピッグペンのみ）</button>
+        <button class="btn-secondary" onclick="copyResult('text-result')">結果をコピー</button>
+      </div>
+      <label>入力テキスト（Ctrl+V でも貼り付け可能）</label>
+      <textarea id="text-input" placeholder="センシティブ情報を含むテキストをここに入力..."></textarea>
+      <div class="status" id="text-status"></div>
+      <div class="result-box" id="text-result"></div>
+    </div>
+  </div>
+
+  <!-- ── ファイルタブ ── -->
+  <div id="tab-file" class="tab-content">
+    <div class="card">
+      <h2>ファイルマスキング</h2>
+      <p style="font-size:.85rem;color:#666;margin-bottom:12px">
+        対応形式: docx / xlsx / pptx / pdf / jpg / png / txt / csv / json など
+      </p>
+      <div class="row">
+        <div>
+          <label>方式（画像・PDF は視覚的塗りつぶし固定）</label>
+          <select id="file-mode">
+            <option value="blackout">伏字（●）</option>
+            <option value="unique">一意性保持</option>
+            <option value="pigpen">ピッグペン暗号</option>
+          </select>
+        </div>
+      </div>
+      <div class="drop-zone" id="drop-zone"
+           onclick="document.getElementById('file-input').click()"
+           ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+        クリックまたはドラッグ＆ドロップでファイルを選択
+        <br><span style="font-size:.8rem">（最大 50 MB）</span>
+      </div>
+      <input type="file" id="file-input" style="display:none" onchange="onFileSelect(event)">
+      <div class="status" id="file-status"></div>
+      <div style="margin-top:12px">
+        <button class="btn-primary" id="file-btn" onclick="maskFile()" disabled>マスキング実行 → ダウンロード</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── クリップボード画像タブ ── -->
+  <div id="tab-clipboard" class="tab-content">
+    <div class="card">
+      <h2>クリップボード画像マスキング</h2>
+      <p style="font-size:.85rem;color:#666;margin-bottom:12px">
+        スクリーンショット等をコピーした後、下のエリアへ Ctrl+V で貼り付けてください。
+      </p>
+      <div class="paste-zone" id="paste-zone" tabindex="0"
+           onpaste="onPasteImage(event)" onclick="document.getElementById('paste-zone').focus()">
+        ここをクリックして Ctrl+V で画像を貼り付け
+        <br><img id="paste-preview" alt="貼り付け画像プレビュー">
+      </div>
+      <div class="status" id="clipboard-status"></div>
+      <div style="margin-top:12px">
+        <button class="btn-primary" id="clip-btn" onclick="maskClipboardImage()" disabled>マスキング実行 → ダウンロード</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+let _selectedFile = null;
+let _pastedImageBlob = null;
+
+// ── タブ切り替え ──────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    const names = ['text', 'file', 'clipboard'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ── テキスト処理 ──────────────────────────────
+async function maskText() {
+  const text = document.getElementById('text-input').value;
+  const mode = document.getElementById('text-mode').value;
+  setStatus('text-status', '処理中...', '');
+  try {
+    const res = await fetch('/api/mask/text', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({text, mode})
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    document.getElementById('text-result').textContent = data.result;
+    setStatus('text-status', '✓ 完了', 'ok');
+  } catch (e) {
+    setStatus('text-status', '✗ ' + e.message, 'err');
+  }
+}
+
+async function unmaskText() {
+  const text = document.getElementById('text-input').value;
+  setStatus('text-status', '復号中...', '');
+  try {
+    const res = await fetch('/api/unmask/text', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({text})
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    document.getElementById('text-result').textContent = data.result;
+    setStatus('text-status', '✓ 復号完了', 'ok');
+  } catch (e) {
+    setStatus('text-status', '✗ ' + e.message, 'err');
+  }
+}
+
+function copyResult(id) {
+  const text = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(text).then(() => alert('コピーしました'));
+}
+
+// ── ファイル処理 ──────────────────────────────
+function onDragOver(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.add('over');
+}
+function onDragLeave(e) {
+  document.getElementById('drop-zone').classList.remove('over');
+}
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('over');
+  const files = e.dataTransfer.files;
+  if (files.length) selectFile(files[0]);
+}
+function onFileSelect(e) {
+  if (e.target.files.length) selectFile(e.target.files[0]);
+}
+function selectFile(f) {
+  _selectedFile = f;
+  document.getElementById('drop-zone').textContent = `選択済: ${f.name} (${(f.size/1024).toFixed(1)} KB)`;
+  document.getElementById('file-btn').disabled = false;
+  setStatus('file-status', '', '');
+}
+
+async function maskFile() {
+  if (!_selectedFile) return;
+  const mode = document.getElementById('file-mode').value;
+  setStatus('file-status', '処理中...', '');
+  const fd = new FormData();
+  fd.append('file', _selectedFile);
+  fd.append('mode', mode);
+  try {
+    const res = await fetch('/api/mask/file', {method: 'POST', body: fd});
+    if (!res.ok) {
+      const d = await res.json();
+      throw new Error(d.error || res.statusText);
+    }
+    const blob = await res.blob();
+    const cd = res.headers.get('Content-Disposition') || '';
+    const fnMatch = cd.match(/filename="?([^"]+)"?/);
+    const name = fnMatch ? fnMatch[1] : 'masked_file';
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name; a.click();
+    URL.revokeObjectURL(url);
+    setStatus('file-status', '✓ ダウンロード開始', 'ok');
+  } catch (e) {
+    setStatus('file-status', '✗ ' + e.message, 'err');
+  }
+}
+
+// ── クリップボード画像処理 ────────────────────
+function onPasteImage(e) {
+  const items = e.clipboardData.items;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      _pastedImageBlob = item.getAsFile();
+      const url = URL.createObjectURL(_pastedImageBlob);
+      const prev = document.getElementById('paste-preview');
+      prev.src = url;
+      prev.style.display = 'block';
+      document.getElementById('paste-zone').firstChild.textContent = '貼り付け済み — ';
+      document.getElementById('clip-btn').disabled = false;
+      setStatus('clipboard-status', '画像を取得しました', 'ok');
+      return;
+    }
+  }
+  setStatus('clipboard-status', '画像データが見つかりません（テキストはテキストタブをご利用ください）', 'err');
+}
+
+async function maskClipboardImage() {
+  if (!_pastedImageBlob) return;
+  setStatus('clipboard-status', '処理中...', '');
+  const fd = new FormData();
+  fd.append('file', _pastedImageBlob, 'clipboard.png');
+  try {
+    const res = await fetch('/api/mask/image', {method: 'POST', body: fd});
+    if (!res.ok) {
+      const d = await res.json();
+      throw new Error(d.error || res.statusText);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'masked.png'; a.click();
+    URL.revokeObjectURL(url);
+    setStatus('clipboard-status', '✓ ダウンロード開始', 'ok');
+  } catch (e) {
+    setStatus('clipboard-status', '✗ ' + e.message, 'err');
+  }
+}
+
+// ── ユーティリティ ─────────────────────────────
+function setStatus(id, msg, cls) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = 'status' + (cls ? ' ' + cls : '');
+}
+</script>
+</body>
+</html>

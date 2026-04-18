@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "pymasking"
+version = "0.1.0"
+description = "個人情報マスキングツール（CLI・Webインターフェース対応）"
+requires-python = ">=3.9"
+dependencies = [
+    "click>=8.1",
+    "flask>=3.0",
+    "python-docx>=1.1",
+    "openpyxl>=3.1",
+    "python-pptx>=0.6",
+    "Pillow>=10.3",
+    "PyMuPDF>=1.24",
+    "pytesseract>=0.3.10",
+    "python-dateutil>=2.9",
+    "pyperclip>=1.8",
+    "chardet>=5.0",
+    "pywin32>=306; sys_platform == 'win32'",
+]
+
+[project.optional-dependencies]
+nlp = ["ja-ginza>=5.2", "spacy>=3.7"]
+
+[project.scripts]
+pymasking = "pymasking.cli.main:cli"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pymasking*"]
