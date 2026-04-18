@@ -7,9 +7,20 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
 
+import os as _os
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+_DEFAULT_MODEL_DIR = _REPO_ROOT / "models" / "ja_ginza"
+_MODEL_PATH = Path(_os.environ.get("GINZA_MODEL_PATH", str(_DEFAULT_MODEL_DIR)))
+
 try:
     import spacy as _spacy
-    _nlp = _spacy.load("ja_ginza")
+    # リポジトリ内モデルを最優先で読み込む
+    if _MODEL_PATH.exists() and (_MODEL_PATH / "meta.json").exists():
+        _nlp = _spacy.load(str(_MODEL_PATH))
+    else:
+        # フォールバック: システムインストール済みモデル
+        _nlp = _spacy.load("ja_ginza")
     _HAS_GINZA = True
 except Exception:
     _HAS_GINZA = False

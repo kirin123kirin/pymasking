@@ -9,29 +9,37 @@
 ## インストール・起動
 
 ```bash
-# 依存パッケージをインストール
-pip install -e .
+# 初回セットアップ（依存インストール＋GiNZAモデルをリポジトリ内に保存）
+setup_model.bat
 
-# NLP（GiNZA）を使う場合
-pip install -e ".[nlp]"
+# CLI でマスキング実行
+start_cli.bat mask report.docx
+start_cli.bat mask report.docx --mode pigpen
+start_cli.bat mask --clipboard
+start_cli.bat unmask report_masked.txt
 
-# CLIでマスキング実行
-pymasking mask report.docx
-pymasking mask report.docx --mode pigpen
-pymasking mask --clipboard          # クリップボードから入力
-pymasking unmask report_masked.txt  # ピッグペン復号
-
-# Webインターフェースを起動
-pymasking web                        # http://127.0.0.1:5000
-pymasking web --port 8080
+# Web インターフェースを起動
+start_web.bat           # http://127.0.0.1:5000
+start_web.bat 8080      # ポート指定
 ```
+
+## GiNZA モデルの管理
+
+- `setup_model.bat` を実行すると `models/ja_ginza/` にモデルがコピーされる
+- バッチファイルは起動時に `GINZA_MODEL_PATH=%REPO_DIR%models\ja_ginza` を設定する
+- `detector.py` は `GINZA_MODEL_PATH` → システムインストール済み → フォールバックの順で試みる
+- `models/ja_ginza/` は `.gitignore` で除外されている（大容量のため）
+- モデルを再取得する場合は `models/ja_ginza/` を削除して `setup_model.bat` を再実行
 
 ## アーキテクチャ概要
 
 ```
 pymasking/
+├── models/ja_ginza/     # GiNZA モデル（setup_model.bat で生成、git 管理外）
+├── scripts/
+│   └── download_model.py  # models/ja_ginza/ へモデルをコピーするスクリプト
 ├── core/
-│   ├── detector.py      # センシティブ情報の検出エンジン（正規表現 + GiNZA NLP）
+│   ├── detector.py      # センシティブ情報の検出エンジン（GiNZA NLP + 正規表現）
 │   ├── masker.py        # mask_text / unmask_text — 検出→置換の統合処理
 │   ├── cipher/
 │   │   ├── pigpen.py    # ピッグペン暗号（可逆）: UTF-8 hex → Unicode記号
@@ -73,7 +81,7 @@ pymasking/
 
 ### カスタム辞書
 
-`dict/custom_dict.txt` にタブ区切りで語と種別を登録すると、GiNZA なしでも固有名詞を検出できる。
+`dict/custom_dict.txt` にタブ区切りで語と種別を登録すると固有名詞を検出できる。
 
 ```
 山田太郎	person
@@ -92,6 +100,6 @@ pymasking/
 | Pillow | 画像処理 |
 | python-dateutil | 日付検証 |
 | pywin32 | Windows クリップボード（画像・ファイル取得） |
-| ja-ginza + spacy | 固有表現認識（オプション） |
+| ja-ginza + spacy | 固有表現認識（最優先。setup_model.bat で導入） |
 
 > Windows 11 で Tesseract を使う場合は [Tesseract インストーラー](https://github.com/UB-Mannheim/tesseract/wiki) で `jpn` 言語データも含めてインストールし、`PATH` を通してください。

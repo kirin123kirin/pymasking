@@ -9,3 +9,6 @@ build/
 .venv/
 venv/
 *.log
+
+# GiNZA モデルデータ（setup_model.bat で生成）
+models/ja_ginza/
