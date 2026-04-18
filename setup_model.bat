@@ -10,16 +10,24 @@ echo  pymasking セットアップ
 echo  インストール先: %INSTALL_DIR%
 echo ============================================================
 
-rem ── インストール先の確認 ──────────────────────────────────────
+rem ── 展開先が違う場合は INSTALL_DIR にコピーして再起動 ─────────
 if /i not "%REPO_DIR:~0,-1%"=="%INSTALL_DIR%" (
     echo.
-    echo [警告] このフォルダを以下の場所に展開して実行してください:
-    echo        %INSTALL_DIR%
+    echo [情報] ファイルを %INSTALL_DIR% にコピー中...
+    if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
+    robocopy "%REPO_DIR:~0,-1%" "%INSTALL_DIR%" /E /XD "%REPO_DIR:~0,-1%\scripts\runtime" /NFL /NDL /NJH /NJS >nul
+    echo コピー完了。%INSTALL_DIR% からセットアップを続行します...
     echo.
-    echo        現在の場所: %REPO_DIR%
-    echo        このまま続行しますか？ 続行する場合は何かキーを押してください。
-    pause >nul
+    start "" /wait "%INSTALL_DIR%\setup_model.bat"
+    exit /b 0
 )
+
+rem ── DLL 探索パスを事前設定 ────────────────────────────────────
+rem  embedded Python の .pyd ファイルが numpy/.libs の DLL を見つけられるよう
+rem  RUNTIME_DIR と numpy .libs を PATH の先頭に追加する
+set NUMPY_LIBS=%RUNTIME_DIR%\Lib\site-packages\numpy\.libs
+set PATH=%RUNTIME_DIR%;%PATH%
+if exist "%NUMPY_LIBS%" set PATH=%NUMPY_LIBS%;%PATH%
 
 rem ── [1/7] Python 3.12.10 embedded ────────────────────────────
 echo.
@@ -46,6 +54,13 @@ rem site-packages を有効化（#import site のコメントアウトを解除�
 powershell -NoProfile -Command ^
   "(Get-Content '%RUNTIME_DIR%\python312._pth') -replace '#import site','import site' | Set-Content '%RUNTIME_DIR%\python312._pth'"
 if errorlevel 1 goto :error
+
+rem VC++ ランタイム DLL をコピー（DLL load 対策）
+for %%D in (msvcp140.dll vcruntime140.dll vcruntime140_1.dll concrt140.dll) do (
+    if exist "%SystemRoot%\System32\%%D" (
+        copy /y "%SystemRoot%\System32\%%D" "%RUNTIME_DIR%\%%D" >nul 2>&1
+    )
+)
 echo Python runtime 準備完了: %RUNTIME_DIR%
 
 :install_pip
@@ -80,6 +95,9 @@ echo [4/7] spaCy / ja-ginza をインストール中...
 "%PYTHON%" -m pip install --no-warn-script-location ja-ginza spacy
 if errorlevel 1 goto :error
 
+rem numpy .libs が生成されたら PATH に追加
+if exist "%NUMPY_LIBS%" set PATH=%NUMPY_LIBS%;%PATH%
+
 rem ── [5/7] SudachiDict_full ────────────────────────────────────
 echo.
 echo [5/7] SudachiDict_full をインストール中（高精度辞書 約800MB）...
@@ -93,13 +111,13 @@ rem ── [6/7] GiNZA モデルをコピー ───────────�
 echo.
 echo [6/7] GiNZA モデルをリポジトリ内にコピー中...
 set PYTHONPATH=%INSTALL_DIR%
-"%PYTHON%" "%REPO_DIR%scripts\download_model.py"
+"%PYTHON%" "%INSTALL_DIR%\scripts\download_model.py"
 if errorlevel 1 goto :error
 
 rem ── [7/7] JMnedict 姓名データ ────────────────────────────────
 echo.
 echo [7/7] JMnedict 姓名データを取得中（約30MB、初回のみ）...
-"%PYTHON%" "%REPO_DIR%scripts\download_names.py"
+"%PYTHON%" "%INSTALL_DIR%\scripts\download_names.py"
 if errorlevel 1 (
     echo [警告] JMnedict の取得に失敗しました。
     echo        GiNZA 単体モードで動作します。
