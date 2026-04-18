@@ -93,6 +93,14 @@ if errorlevel 1 (
     echo        GiNZA 単体モードで動作します。
 )
 
+rem ── スタンドアロン配布不要ファイルを削除 ─────────────────────
+echo.
+echo [後処理] 不要ファイルを削除中...
+if exist "%REPO_DIR%scripts\download_model.py"  del /f /q "%REPO_DIR%scripts\download_model.py"
+if exist "%REPO_DIR%scripts\download_names.py"  del /f /q "%REPO_DIR%scripts\download_names.py"
+if exist "%REPO_DIR%data\JMnedict.xml.gz"        del /f /q "%REPO_DIR%data\JMnedict.xml.gz"
+if exist "%REPO_DIR%pyproject.toml"              del /f /q "%REPO_DIR%pyproject.toml"
+
 echo.
 echo ============================================================
 echo  セットアップ完了
