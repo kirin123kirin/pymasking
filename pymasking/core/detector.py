@@ -12,15 +12,92 @@ import os as _os
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 _DEFAULT_MODEL_DIR = _REPO_ROOT / "models" / "ja_ginza"
 _MODEL_PATH = Path(_os.environ.get("GINZA_MODEL_PATH", str(_DEFAULT_MODEL_DIR)))
+_DATA_DIR = _REPO_ROOT / "data"
+
+
+def _has_sudachi_full() -> bool:
+    try:
+        import sudachidict_full  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+def _load_name_set(filename: str) -> list[str]:
+    """data/ から姓名リストを読み込む（ファイルがなければ空リスト）。"""
+    path = _DATA_DIR / filename
+    if not path.exists():
+        return []
+    return [ln.strip() for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+
+
+def _add_entity_ruler(nlp) -> bool:
+    """JMnedict データから EntityRuler を構築してパイプラインに追加する。
+
+    GiNZA の NER を補完する形で after="ner" に配置。
+    overwrite_ents=False のため GiNZA 検出済みエンティティは上書きしない。
+    phrase_matcher_attr="NORM" で Sudachi の正規化形（旧字体→新字体等）を利用。
+    """
+    person_names = _load_name_set("person_names.txt")  # 完全人名（最高信頼度）
+    surnames = _load_name_set("surnames.txt")           # 姓のみ（2文字以上）
+    given_names = _load_name_set("given_names.txt")     # 名のみ（2文字以上）
+
+    if not person_names and not surnames and not given_names:
+        return False
+
+    ruler = nlp.add_pipe(
+        "entity_ruler",
+        after="ner",
+        config={
+            "overwrite_ents": False,
+            "phrase_matcher_attr": "NORM",  # 旧字体・異体字を正規化後にマッチ
+        },
+    )
+
+    patterns: list[dict] = []
+    # 完全人名：最も信頼度が高い（誤検知リスク低）
+    for name in person_names:
+        patterns.append({"label": "Person", "pattern": name})
+    # 姓：2文字以上のみ（1文字姓は一般語との区別が困難）
+    for name in surnames:
+        if len(name) >= 2:
+            patterns.append({"label": "Person", "pattern": name})
+    # 名：2文字以上のみ（単独での誤検知を緩和）
+    for name in given_names:
+        if len(name) >= 2:
+            patterns.append({"label": "Person", "pattern": name})
+
+    ruler.add_patterns(patterns)
+    return True
+
+
+def _setup_nlp():
+    """GiNZA モデルをロードし EntityRuler を追加して返す。"""
+    import spacy
+
+    # SudachiDict_full が利用可能なら tokenizer に適用
+    config: dict = {}
+    if _has_sudachi_full():
+        config = {"nlp": {"tokenizer": {"dict_type": "full"}}}
+
+    def _load(path_or_name: str) -> "spacy.Language":
+        try:
+            return spacy.load(path_or_name, config=config)
+        except Exception:
+            # dict_type 指定が効かない環境はデフォルト設定で再試行
+            return spacy.load(path_or_name)
+
+    if _MODEL_PATH.exists() and (_MODEL_PATH / "meta.json").exists():
+        nlp = _load(str(_MODEL_PATH))
+    else:
+        nlp = _load("ja_ginza")
+
+    _add_entity_ruler(nlp)
+    return nlp
+
 
 try:
-    import spacy as _spacy
-    # リポジトリ内モデルを最優先で読み込む
-    if _MODEL_PATH.exists() and (_MODEL_PATH / "meta.json").exists():
-        _nlp = _spacy.load(str(_MODEL_PATH))
-    else:
-        # フォールバック: システムインストール済みモデル
-        _nlp = _spacy.load("ja_ginza")
+    _nlp = _setup_nlp()
     _HAS_GINZA = True
 except Exception:
     _HAS_GINZA = False

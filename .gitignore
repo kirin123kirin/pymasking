@@ -12,3 +12,6 @@ venv/
 
 # GiNZA モデルデータ（setup_model.bat で生成）
 models/ja_ginza/
+
+# JMnedict ソース XML（大容量・生成物）
+data/JMnedict.xml.gz

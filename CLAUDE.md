@@ -36,8 +36,13 @@ start_web.bat 8080      # ポート指定
 ```
 pymasking/
 ├── models/ja_ginza/     # GiNZA モデル（setup_model.bat で生成、git 管理外）
+├── data/
+│   ├── surnames.txt     # JMnedict 由来の姓リスト（setup_model.bat で生成）
+│   ├── given_names.txt  # JMnedict 由来の名リスト（setup_model.bat で生成）
+│   └── person_names.txt # JMnedict 由来の完全人名リスト（setup_model.bat で生成）
 ├── scripts/
-│   └── download_model.py  # models/ja_ginza/ へモデルをコピーするスクリプト
+│   ├── download_model.py  # models/ja_ginza/ へモデルをコピーするスクリプト
+│   └── download_names.py  # JMnedict を取得して data/ へ保存するスクリプト
 ├── core/
 │   ├── detector.py      # センシティブ情報の検出エンジン（GiNZA NLP + 正規表現）
 │   ├── masker.py        # mask_text / unmask_text — 検出→置換の統合処理
@@ -68,6 +73,22 @@ pymasking/
 **画像・PDF（視覚的マスキング）**
 - 画像: `pytesseract.image_to_data()` でワード位置を取得 → 検出語を黒矩形で塗りつぶし
 - PDF: `fitz.Page.search_for()` でテキスト矩形を取得 → `draw_rect()` で黒塗り
+
+### 人物・組織検出パイプライン（GiNZA 使用時）
+
+```
+テキスト
+  ↓ SudachiPy（sudachidict_full で最高精度の形態素解析・旧字体正規化）
+  ↓ GiNZA NER（文脈ベースの固有表現認識）
+  ↓ EntityRuler（after="ner", overwrite_ents=False）
+      ├─ person_names.txt（完全人名・最高信頼度）
+      ├─ surnames.txt（姓・2文字以上）
+      └─ given_names.txt（名・2文字以上）
+  ↓ 検出結果（GiNZA + EntityRuler の補完）
+```
+
+- `phrase_matcher_attr="NORM"` で Sudachi の正規化形を使い旧字体・異体字に対応
+- `overwrite_ents=False` で GiNZA 検出済みエンティティは上書きしない
 
 ### 暗号化方式
 
@@ -101,5 +122,6 @@ pymasking/
 | python-dateutil | 日付検証 |
 | pywin32 | Windows クリップボード（画像・ファイル取得） |
 | ja-ginza + spacy | 固有表現認識（最優先。setup_model.bat で導入） |
+| sudachidict_full | 高精度辞書（旧字体正規化・珍しい固有名詞対応） |
 
 > Windows 11 で Tesseract を使う場合は [Tesseract インストーラー](https://github.com/UB-Mannheim/tesseract/wiki) で `jpn` 言語データも含めてインストールし、`PATH` を通してください。
