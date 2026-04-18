@@ -107,25 +107,11 @@ if exist "%FAVICON_PNG%" (
     )
 ) else (
     echo [警告] favicon.png が見つかりません: %FAVICON_PNG%
-    echo        pymasking\web\static\favicon.png に画像を配置してください。
-)
-
-rem ── start_web.lnk ショートカット作成（カスタムアイコン設定） ──
-echo.
-echo [後処理2] start_web.lnk ショートカットを作成中...
-if exist "%FAVICON_ICO%" (
-    powershell -NoProfile -Command ^
-      "$s=New-Object -Com WScript.Shell; $sc=$s.CreateShortcut('%REPO_DIR%start_web.lnk'); $sc.TargetPath='%REPO_DIR%start_web.bat'; $sc.WorkingDirectory='%REPO_DIR%'; $sc.IconLocation='%FAVICON_ICO%,0'; $sc.Description='pymasking Web UI'; $sc.Save()"
-    if errorlevel 1 (
-        echo [警告] ショートカットの作成に失敗しました。
-    ) else (
-        echo start_web.lnk を作成しました（カスタムアイコン付き）。
-    )
 )
 
 rem ── スタンドアロン配布不要ファイルを削除 ─────────────────────
 echo.
-echo [後処理3] 不要ファイルを削除中...
+echo [後処理2] 不要ファイルを削除中...
 if exist "%REPO_DIR%scripts\download_model.py"  del /f /q "%REPO_DIR%scripts\download_model.py"
 if exist "%REPO_DIR%scripts\download_names.py"  del /f /q "%REPO_DIR%scripts\download_names.py"
 if exist "%REPO_DIR%data\JMnedict.xml.gz"        del /f /q "%REPO_DIR%data\JMnedict.xml.gz"
@@ -137,7 +123,7 @@ echo  セットアップ完了
 echo  Runtime        : %RUNTIME_DIR%
 echo  GINZA モデル   : %REPO_DIR%data\models\ja_ginza
 echo  start_cli.bat  : CLI 起動
-echo  start_web.bat  : Web UI 起動（start_web.lnk でカスタムアイコン）
+echo  start_web.bat  : Web UI 起動（初回実行で start_web.lnk も自動生成）
 echo ============================================================
 pause
 exit /b 0
