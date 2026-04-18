@@ -1,12 +1,25 @@
 @echo off
 setlocal
 set REPO_DIR=%~dp0
-set RUNTIME_DIR=%REPO_DIR%scripts\runtime
+set INSTALL_DIR=%LOCALAPPDATA%\pymasking
+set RUNTIME_DIR=%INSTALL_DIR%\scripts\runtime
 set PYTHON=%RUNTIME_DIR%\python.exe
 
 echo ============================================================
 echo  pymasking セットアップ
+echo  インストール先: %INSTALL_DIR%
 echo ============================================================
+
+rem ── インストール先の確認 ──────────────────────────────────────
+if /i not "%REPO_DIR:~0,-1%"=="%INSTALL_DIR%" (
+    echo.
+    echo [警告] このフォルダを以下の場所に展開して実行してください:
+    echo        %INSTALL_DIR%
+    echo.
+    echo        現在の場所: %REPO_DIR%
+    echo        このまま続行しますか？ 続行する場合は何かキーを押してください。
+    pause >nul
+)
 
 rem ── [1/7] Python 3.12.10 embedded ────────────────────────────
 echo.
@@ -79,7 +92,7 @@ if errorlevel 1 (
 rem ── [6/7] GiNZA モデルをコピー ───────────────────────────────
 echo.
 echo [6/7] GiNZA モデルをリポジトリ内にコピー中...
-set PYTHONPATH=%REPO_DIR%
+set PYTHONPATH=%INSTALL_DIR%
 "%PYTHON%" "%REPO_DIR%scripts\download_model.py"
 if errorlevel 1 goto :error
 
@@ -89,41 +102,46 @@ echo [7/7] JMnedict 姓名データを取得中（約30MB、初回のみ）...
 "%PYTHON%" "%REPO_DIR%scripts\download_names.py"
 if errorlevel 1 (
     echo [警告] JMnedict の取得に失敗しました。
-    echo        ネットワーク接続を確認して scripts\download_names.py を手動実行してください。
     echo        GiNZA 単体モードで動作します。
 )
 
-rem ── favicon.ico 生成（Pillow で PNG→ICO 変換） ───────────────
+rem ── favicon.ico 生成 ──────────────────────────────────────────
 echo.
 echo [後処理1] favicon.ico を生成中...
-set FAVICON_PNG=%REPO_DIR%pymasking\web\static\favicon.png
-set FAVICON_ICO=%REPO_DIR%pymasking\web\static\favicon.ico
+set FAVICON_PNG=%INSTALL_DIR%\pymasking\web\static\favicon.png
+set FAVICON_ICO=%INSTALL_DIR%\pymasking\web\static\favicon.ico
 if exist "%FAVICON_PNG%" (
-    "%PYTHON%" -c "from PIL import Image; img=Image.open(r'%FAVICON_PNG%'); img.save(r'%FAVICON_ICO%', format='ICO', sizes=[(256,256),(128,128),(64,64),(32,32),(16,16)])"
-    if errorlevel 1 (
-        echo [警告] favicon.ico の生成に失敗しました。
-    ) else (
-        echo favicon.ico を生成しました: %FAVICON_ICO%
-    )
-) else (
-    echo [警告] favicon.png が見つかりません: %FAVICON_PNG%
+    "%PYTHON%" -c "from PIL import Image; img=Image.open(r'%FAVICON_PNG%'); img.save(r'%FAVICON_ICO%', format='ICO', sizes=[(256,256),(128,128),(64,64),(32,32),(16,16)])" >nul 2>&1
 )
 
-rem ── スタンドアロン配布不要ファイルを削除 ─────────────────────
+rem ── デスクトップにショートカット作成（1回のみ） ──────────────
 echo.
-echo [後処理2] 不要ファイルを削除中...
-if exist "%REPO_DIR%scripts\download_model.py"  del /f /q "%REPO_DIR%scripts\download_model.py"
-if exist "%REPO_DIR%scripts\download_names.py"  del /f /q "%REPO_DIR%scripts\download_names.py"
-if exist "%REPO_DIR%data\JMnedict.xml.gz"        del /f /q "%REPO_DIR%data\JMnedict.xml.gz"
-if exist "%REPO_DIR%pyproject.toml"              del /f /q "%REPO_DIR%pyproject.toml"
+echo [後処理2] デスクトップにショートカットを作成中...
+set LNK=%USERPROFILE%\Desktop\pymasking.lnk
+powershell -NoProfile -Command ^
+  "$s=New-Object -Com WScript.Shell; $sc=$s.CreateShortcut('%LNK%'); $sc.TargetPath='%INSTALL_DIR%\start_web.bat'; $sc.WorkingDirectory='%INSTALL_DIR%'; $sc.IconLocation='%INSTALL_DIR%\pymasking\web\static\favicon.ico,0'; $sc.Description='pymasking Web UI'; $sc.Save()"
+if errorlevel 1 (
+    echo [警告] ショートカットの作成に失敗しました。
+) else (
+    echo デスクトップに pymasking.lnk を作成しました。
+)
+
+rem ── 不要ファイルを削除 ────────────────────────────────────────
+echo.
+echo [後処理3] 不要ファイルを削除中...
+if exist "%INSTALL_DIR%\scripts\download_model.py"  del /f /q "%INSTALL_DIR%\scripts\download_model.py"
+if exist "%INSTALL_DIR%\scripts\download_names.py"  del /f /q "%INSTALL_DIR%\scripts\download_names.py"
+if exist "%INSTALL_DIR%\data\JMnedict.xml.gz"        del /f /q "%INSTALL_DIR%\data\JMnedict.xml.gz"
+if exist "%INSTALL_DIR%\pyproject.toml"              del /f /q "%INSTALL_DIR%\pyproject.toml"
 
 echo.
 echo ============================================================
 echo  セットアップ完了
-echo  Runtime        : %RUNTIME_DIR%
-echo  GINZA モデル   : %REPO_DIR%data\models\ja_ginza
-echo  start_cli.bat  : CLI 起動
-echo  start_web.bat  : Web UI 起動（初回実行で start_web.lnk も自動生成）
+echo  インストール先   : %INSTALL_DIR%
+echo  GINZA モデル     : %INSTALL_DIR%\data\models\ja_ginza
+echo  デスクトップ     : pymasking.lnk（Web UI ショートカット）
+echo  start_cli.bat    : CLI 起動
+echo  start_web.bat    : Web UI 起動
 echo ============================================================
 pause
 exit /b 0
