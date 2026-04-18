@@ -22,6 +22,27 @@ _SURNAME_TYPES = {"surname"}
 _GIVEN_TYPES = {"given", "fem", "masc"}
 _PERSON_TYPES = {"person"}
 
+# JMnedict DTD で定義されているエンティティを明示的に登録する。
+# Python の ElementTree は DTD の内部サブセットを環境によって解決しないため、
+# XMLParser.entity に事前注入することで &surname; 等を確実に文字列へ変換する。
+_JMNEDICT_ENTITIES: dict[str, str] = {
+    "surname": "surname", "given": "given", "fem": "fem", "masc": "masc",
+    "person": "person", "place": "place", "company": "company",
+    "organization": "organization", "ok": "ok", "work": "work",
+    "station": "station", "unclass": "unclass", "char": "char",
+    "creat": "creat", "dei": "dei", "doc": "doc", "ev": "ev",
+    "fict": "fict", "god": "god", "leg": "leg", "myth": "myth",
+    "obj": "obj", "product": "product", "relig": "relig", "serv": "serv",
+    "ship": "ship", "rr": "rr", "road": "road",
+}
+
+
+def _make_parser() -> ET.XMLParser:
+    parser = ET.XMLParser()
+    for k, v in _JMNEDICT_ENTITIES.items():
+        parser.entity[k] = v
+    return parser
+
 
 def download(url: str, dest: Path) -> None:
     print(f"ダウンロード中: {url}")
@@ -44,7 +65,7 @@ def parse(xml_gz: Path) -> tuple[set[str], set[str], set[str]]:
 
     with gzip.open(xml_gz, "rb") as f:
         count = 0
-        for event, elem in ET.iterparse(f, events=("end",)):
+        for event, elem in ET.iterparse(f, events=("end",), parser=_make_parser()):
             if elem.tag != "entry":
                 continue
 
