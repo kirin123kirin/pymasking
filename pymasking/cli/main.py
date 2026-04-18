@@ -99,7 +99,7 @@ def unmask(file):
 
 @cli.command()
 @click.option("--host", default="127.0.0.1", show_default=True)
-@click.option("--port", default=5000, show_default=True)
+@click.option("--port", default=59631, show_default=True)
 @click.option("--debug", is_flag=True, hidden=True)
 def web(host, port, debug):
     """Web インターフェースを起動する。"""

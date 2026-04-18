@@ -3,9 +3,27 @@
 import io
 import os
 import tempfile
+import threading
+import time
 from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request, send_file
+
+# ── ブラウザ閉じ検知：ハートビートウォッチドッグ ──────────────────
+_heartbeat_lock = threading.Lock()
+_last_heartbeat: float = 0.0
+_heartbeat_active: bool = False   # 初回ハートビート受信後に True
+_HEARTBEAT_TIMEOUT = 15           # 秒：この間隔で無受信なら終了
+
+
+def _watchdog() -> None:
+    while True:
+        time.sleep(5)
+        with _heartbeat_lock:
+            active = _heartbeat_active
+            elapsed = time.time() - _last_heartbeat
+        if active and elapsed > _HEARTBEAT_TIMEOUT:
+            os._exit(0)
 
 
 _ALLOWED_EXTS = {
@@ -19,9 +37,19 @@ def create_app() -> Flask:
     app = Flask(__name__, template_folder="templates", static_folder="static")
     app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB
 
+    threading.Thread(target=_watchdog, daemon=True, name="heartbeat-watchdog").start()
+
     @app.route("/")
     def index():
         return render_template("index.html")
+
+    @app.route("/api/heartbeat", methods=["POST"])
+    def api_heartbeat():
+        global _last_heartbeat, _heartbeat_active
+        with _heartbeat_lock:
+            _last_heartbeat = time.time()
+            _heartbeat_active = True
+        return jsonify({"ok": True})
 
     @app.route("/api/mask/text", methods=["POST"])
     def api_mask_text():

@@ -289,6 +289,15 @@ function setStatus(id, msg, cls) {
   el.textContent = msg;
   el.className = 'status' + (cls ? ' ' + cls : '');
 }
+
+// ── ハートビート：ブラウザ閉じ検知用 ──────────
+(function() {
+  function beat() {
+    fetch('/api/heartbeat', { method: 'POST' }).catch(() => {});
+  }
+  beat();
+  setInterval(beat, 3000);
+})();
 </script>
 </body>
 </html>

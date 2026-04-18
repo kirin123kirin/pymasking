@@ -26,7 +26,7 @@ if exist "%FAVICON_ICO%" (
       "$s=New-Object -Com WScript.Shell; $sc=$s.CreateShortcut('%REPO_DIR%start_web.lnk'); $sc.TargetPath='%REPO_DIR%start_web.bat'; $sc.WorkingDirectory='%REPO_DIR%'; $sc.IconLocation='%FAVICON_ICO%,0'; $sc.Description='pymasking Web UI'; $sc.Save()" >nul 2>&1
 )
 
-set PORT=5000
+set PORT=59631
 if not "%1"=="" set PORT=%1
 
 echo Web UI を起動します: http://127.0.0.1:%PORT%
