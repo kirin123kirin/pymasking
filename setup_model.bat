@@ -92,7 +92,7 @@ echo [5/7] Installing SudachiDict_full (high-accuracy dictionary, ~800MB)...
 "%PYTHON%" -m pip install --no-warn-script-location sudachidict_full
 if errorlevel 1 (
     echo [WARNING] Failed to install sudachidict_full.
-    echo          Using standard dictionary (sudachidict_core) instead.
+    echo          Using standard dictionary ^(sudachidict_core^) instead.
 )
 
 echo.
