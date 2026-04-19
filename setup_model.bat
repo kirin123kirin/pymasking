@@ -27,7 +27,7 @@ set PATH=%RUNTIME_DIR%;%PATH%
 if exist "%NUMPY_LIBS%" set PATH=%NUMPY_LIBS%;%PATH%
 
 echo.
-echo [1/7] Preparing Python 3.12.10 embedded runtime...
+echo [1/8] Preparing Python 3.12.10 embedded runtime...
 if exist "%PYTHON%" (
     echo Using existing Python runtime: %PYTHON%
     goto :install_pip
@@ -61,7 +61,7 @@ echo Python runtime ready: %RUNTIME_DIR%
 powershell -NoProfile -Command ^
   "$p='%RUNTIME_DIR%\python312._pth'; if(Test-Path $p){$c=(Get-Content $p -Raw); if($c -notmatch 'import site'){$c+=[Environment]::NewLine+'import site'}; if($c -notmatch [regex]::Escape('%INSTALL_DIR%')){$c+=[Environment]::NewLine+'%INSTALL_DIR%'}; Set-Content $p $c.TrimEnd()}"
 echo.
-echo [2/7] Installing pip...
+echo [2/8] Installing pip...
 "%PYTHON%" -m pip --version >nul 2>&1
 if not errorlevel 1 (
     echo pip is already installed.
@@ -76,7 +76,7 @@ del "%GETPIP%"
 
 :install_deps
 echo.
-echo [3/7] Installing dependencies...
+echo [3/8] Installing dependencies...
 "%PYTHON%" -m pip install --no-warn-script-location ^
   click flask python-docx openpyxl python-pptx ^
   Pillow PyMuPDF pytesseract python-dateutil ^
@@ -84,14 +84,14 @@ echo [3/7] Installing dependencies...
 if errorlevel 1 goto :error
 
 echo.
-echo [4/7] Installing spaCy / ja-ginza...
+echo [4/8] Installing spaCy / ja-ginza...
 "%PYTHON%" -m pip install --no-warn-script-location ja-ginza spacy
 if errorlevel 1 goto :error
 
 if exist "%NUMPY_LIBS%" set PATH=%NUMPY_LIBS%;%PATH%
 
 echo.
-echo [5/7] Installing SudachiDict_full (high-accuracy dictionary, ~800MB)...
+echo [5/8] Installing SudachiDict_full (high-accuracy dictionary, ~800MB)...
 "%PYTHON%" -m pip install --no-warn-script-location sudachidict_full
 if errorlevel 1 (
     echo [WARNING] Failed to install sudachidict_full.
@@ -99,18 +99,54 @@ if errorlevel 1 (
 )
 
 echo.
-echo [6/7] Copying GiNZA model into repository...
+echo [6/8] Copying GiNZA model into repository...
 set PYTHONPATH=%INSTALL_DIR%
 "%PYTHON%" "%INSTALL_DIR%\scripts\download_model.py"
 if errorlevel 1 goto :error
 
 echo.
-echo [7/7] Downloading JMnedict name data (~30MB, first run only)...
+echo [7/8] Downloading JMnedict name data (~30MB, first run only)...
 "%PYTHON%" "%INSTALL_DIR%\scripts\download_names.py"
 if errorlevel 1 (
     echo [WARNING] Failed to download JMnedict data.
     echo          Running in GiNZA-only mode.
 )
+
+echo.
+echo [8/8] Installing Tesseract OCR v5.5.0 with Japanese language data...
+set TESSERACT_DIR=%INSTALL_DIR%\scripts\tesseract
+set TESSERACT_EXE=%TESSERACT_DIR%\tesseract.exe
+if exist "%TESSERACT_EXE%" (
+    echo Tesseract already installed: %TESSERACT_EXE%
+    goto :tesseract_done
+)
+set TESS_URL=https://github.com/UB-Mannheim/tesseract/releases/download/v5.5.0.20241111/tesseract-ocr-w64-setup-5.5.0.20241111.exe
+set TESS_INSTALLER=%TEMP%\tesseract-setup.exe
+echo Downloading Tesseract installer (~60MB)...
+powershell -NoProfile -Command "Invoke-WebRequest -Uri '%TESS_URL%' -OutFile '%TESS_INSTALLER%'"
+if errorlevel 1 (
+    echo [WARNING] Failed to download Tesseract. Image OCR will not be available.
+    goto :tesseract_done
+)
+echo Installing Tesseract to %TESSERACT_DIR%...
+"%TESS_INSTALLER%" /S /D=%TESSERACT_DIR%
+del "%TESS_INSTALLER%" >nul 2>&1
+if not exist "%TESSERACT_EXE%" (
+    echo [WARNING] Tesseract installation failed.
+    goto :tesseract_done
+)
+echo Downloading Japanese language data...
+set TESSDATA_DIR=%TESSERACT_DIR%\tessdata
+set TESSDATA_BASE=https://github.com/tesseract-ocr/tessdata/raw/main
+powershell -NoProfile -Command "Invoke-WebRequest -Uri '%TESSDATA_BASE%/jpn.traineddata' -OutFile '%TESSDATA_DIR%\jpn.traineddata'"
+if errorlevel 1 echo [WARNING] Failed to download jpn.traineddata.
+powershell -NoProfile -Command "Invoke-WebRequest -Uri '%TESSDATA_BASE%/jpn_vert.traineddata' -OutFile '%TESSDATA_DIR%\jpn_vert.traineddata'"
+if errorlevel 1 echo [WARNING] Failed to download jpn_vert.traineddata.
+if not exist "%TESSDATA_DIR%\script" mkdir "%TESSDATA_DIR%\script"
+powershell -NoProfile -Command "Invoke-WebRequest -Uri '%TESSDATA_BASE%/script/Japanese.traineddata' -OutFile '%TESSDATA_DIR%\script\Japanese.traineddata'"
+if errorlevel 1 echo [WARNING] Failed to download script/Japanese.traineddata.
+echo Tesseract installed: %TESSERACT_EXE%
+:tesseract_done
 
 echo.
 echo [Post-1] Generating favicon.ico...
