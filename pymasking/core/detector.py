@@ -23,6 +23,16 @@ def _has_sudachi_full() -> bool:
         return False
 
 
+def _resolve_model_path(base: Path) -> Path | None:
+    """Find actual spaCy model dir; handles nested structures like ja_ginza/ja_ginza-5.2.0/."""
+    if (base / "meta.json").exists():
+        return base
+    for subdir in sorted(base.iterdir()):
+        if subdir.is_dir() and (subdir / "meta.json").exists():
+            return subdir
+    return None
+
+
 def _setup_nlp():
     """Load GiNZA model with user dict if available."""
     import spacy
@@ -43,8 +53,9 @@ def _setup_nlp():
         except Exception:
             return spacy.load(path_or_name)
 
-    if _MODEL_PATH.exists() and (_MODEL_PATH / "meta.json").exists():
-        nlp = _load(str(_MODEL_PATH))
+    model_path = _resolve_model_path(_MODEL_PATH) if _MODEL_PATH.exists() else None
+    if model_path:
+        nlp = _load(str(model_path))
     else:
         nlp = _load("ja_ginza")
 
