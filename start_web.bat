@@ -6,6 +6,7 @@ set GINZA_MODEL_PATH=%REPO_DIR%data\models\ja_ginza
 set PYTHONPATH=%REPO_DIR%
 
 set NUMPY_LIBS=%REPO_DIR%scripts\runtime\Lib\site-packages\numpy\.libs
+if not exist "%NUMPY_LIBS%" set NUMPY_LIBS=%REPO_DIR%scripts\runtime\Lib\site-packages\numpy\libs
 set PATH=%REPO_DIR%scripts\runtime;%PATH%
 if exist "%NUMPY_LIBS%" set PATH=%NUMPY_LIBS%;%PATH%
 
@@ -30,4 +31,5 @@ echo Starting Web UI: http://127.0.0.1:%PORT%
 echo Press Ctrl+C to stop.
 echo.
 
+cd /d "%REPO_DIR%"
 "%PYTHON%" -m pymasking.cli.main web --port %PORT%

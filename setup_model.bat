@@ -22,6 +22,7 @@ if /i not "%REPO_DIR:~0,-1%"=="%INSTALL_DIR%" (
 )
 
 set NUMPY_LIBS=%RUNTIME_DIR%\Lib\site-packages\numpy\.libs
+if not exist "%NUMPY_LIBS%" set NUMPY_LIBS=%RUNTIME_DIR%\Lib\site-packages\numpy\libs
 set PATH=%RUNTIME_DIR%;%PATH%
 if exist "%NUMPY_LIBS%" set PATH=%NUMPY_LIBS%;%PATH%
 
@@ -57,6 +58,8 @@ for %%D in (msvcp140.dll vcruntime140.dll vcruntime140_1.dll concrt140.dll) do (
 echo Python runtime ready: %RUNTIME_DIR%
 
 :install_pip
+powershell -NoProfile -Command ^
+  "$p='%RUNTIME_DIR%\python312._pth'; if(Test-Path $p){$c=(Get-Content $p -Raw); if($c -notmatch 'import site'){$c+=[Environment]::NewLine+'import site'}; if($c -notmatch [regex]::Escape('%INSTALL_DIR%')){$c+=[Environment]::NewLine+'%INSTALL_DIR%'}; Set-Content $p $c.TrimEnd()}"
 echo.
 echo [2/7] Installing pip...
 "%PYTHON%" -m pip --version >nul 2>&1
