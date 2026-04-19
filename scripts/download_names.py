@@ -118,19 +118,20 @@ def _build_sudachi_dict(surnames: set[str], given_names: set[str], person_names:
         s = name.replace(",", "")
         if not s:
             continue
-        rows.append(f"{s},0,0,3000,{s},{s},{s},{s},名詞,固有名詞,人名,一般,,,,,,")
+        rows.append(f"{s},0,0,3000,{s},{s},{s},{s},名詞,固有名詞,人名,一般,,*,*,*,*")
     for name in sorted(surnames):
         if len(name) < 2:
             continue
         s = name.replace(",", "")
-        rows.append(f"{s},0,0,3000,{s},{s},{s},{s},名詞,固有名詞,人名,姓,,,,,,")
+        rows.append(f"{s},0,0,3000,{s},{s},{s},{s},名詞,固有名詞,人名,姓,,*,*,*,*")
     for name in sorted(given_names):
         if len(name) < 2:
             continue
         s = name.replace(",", "")
-        rows.append(f"{s},0,0,3000,{s},{s},{s},{s},名詞,固有名詞,人名,名,,,,,,")
+        rows.append(f"{s},0,0,3000,{s},{s},{s},{s},名詞,固有名詞,人名,名,,*,*,*,*")
 
-    csv_path.write_text("\n".join(rows), encoding="utf-8")
+    # write_bytes avoids Windows CRLF conversion that would corrupt the last field of each row
+    csv_path.write_bytes("\n".join(rows).encode("utf-8"))
     print(f"  Building Sudachi user dict ({len(rows):,} entries)...")
 
     try:

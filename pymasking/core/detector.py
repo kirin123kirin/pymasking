@@ -10,13 +10,45 @@ from typing import List
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
-def _setup_nlp():
-    """Load ja_ginza from the installed package (scripts/runtime/Lib/site-packages).
+def _locate_system_dic() -> "Path | None":
+    import importlib.util
+    for pkg in ("sudachidict_full", "sudachidict_core", "sudachidict_small"):
+        try:
+            spec = importlib.util.find_spec(pkg)
+            if spec and spec.submodule_search_locations:
+                for loc in spec.submodule_search_locations:
+                    p = Path(loc) / "resources" / "system.dic"
+                    if p.exists():
+                        return p
+        except Exception:
+            pass
+    return None
 
+
+def _setup_nlp():
+    """Load ja_ginza.
+
+    If names_user.dic exists, configure sudachipy via SUDACHI_SETTINGS_PATH
+    so proper nouns are tokenized correctly.
     compound_splitter excluded: ja_ginza 5.x ships split_mode=null which fails
     confection validation on newer spacy/confection versions.
     """
+    import json
+    import os
     import spacy
+
+    user_dic = _REPO_ROOT / "data" / "names_user.dic"
+    if user_dic.exists():
+        try:
+            system_dic = _locate_system_dic()
+            if system_dic:
+                cfg = {"systemDict": system_dic.as_posix(), "userDict": [user_dic.as_posix()]}
+                cfg_path = _REPO_ROOT / "data" / "sudachi_runtime.json"
+                cfg_path.write_text(json.dumps(cfg, ensure_ascii=False), encoding="utf-8")
+                os.environ["SUDACHI_SETTINGS_PATH"] = str(cfg_path)
+        except Exception:
+            pass
+
     return spacy.load("ja_ginza", exclude=["compound_splitter"])
 
 
