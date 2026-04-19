@@ -107,13 +107,8 @@ if errorlevel 1 (
 )
 
 echo.
-echo [6/8] Copying GiNZA model into repository...
+echo [6/8] Downloading JMnedict name data (~30MB, first run only)...
 set PYTHONPATH=%INSTALL_DIR%
-"%PYTHON%" "%INSTALL_DIR%\scripts\download_model.py"
-if errorlevel 1 goto :error
-
-echo.
-echo [7/8] Downloading JMnedict name data (~30MB, first run only)...
 "%PYTHON%" "%INSTALL_DIR%\scripts\download_names.py"
 if errorlevel 1 (
     echo [WARNING] Failed to download JMnedict data.
@@ -121,7 +116,7 @@ if errorlevel 1 (
 )
 
 echo.
-echo [8/8] Downloading surya-ocr models (~500MB, first run only)...
+echo [7/8] Downloading surya-ocr models (~500MB, first run only)...
 set MODEL_CACHE_DIR=%INSTALL_DIR%\data\models\hf_cache
 set PYTHONPATH=%INSTALL_DIR%
 "%PYTHON%" "%INSTALL_DIR%\scripts\download_surya_models.py"
@@ -151,7 +146,6 @@ if errorlevel 1 (
 
 echo.
 echo [Post-3] Removing temporary files...
-if exist "%INSTALL_DIR%\scripts\download_model.py"        del /f /q "%INSTALL_DIR%\scripts\download_model.py"
 if exist "%INSTALL_DIR%\scripts\download_names.py"        del /f /q "%INSTALL_DIR%\scripts\download_names.py"
 if exist "%INSTALL_DIR%\scripts\download_surya_models.py" del /f /q "%INSTALL_DIR%\scripts\download_surya_models.py"
 if exist "%INSTALL_DIR%\data\JMnedict.xml.gz"             del /f /q "%INSTALL_DIR%\data\JMnedict.xml.gz"
@@ -161,7 +155,7 @@ echo.
 echo ============================================================
 echo  Setup Complete
 echo  Install directory : %INSTALL_DIR%
-echo  GiNZA model       : %INSTALL_DIR%\data\models\ja_ginza
+echo  GiNZA model       : scripts\runtime\Lib\site-packages\ja_ginza
 echo  surya-ocr models  : %INSTALL_DIR%\data\models\hf_cache
 echo  Desktop           : pymasking.lnk (Web UI shortcut)
 echo  mask.bat          : Mask file or clipboard
