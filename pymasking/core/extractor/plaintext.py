@@ -16,10 +16,10 @@ def _detect_encoding(path: Path) -> str:
         return "utf-8"
 
 
-def process_text(path: Path, mode: MaskMode = "blackout") -> Path:
+def process_text(path: Path, mode: MaskMode = "blackout", categories=None) -> Path:
     encoding = _detect_encoding(path)
     text = path.read_text(encoding=encoding, errors="replace")
-    masked = mask_text(text, mode)
+    masked = mask_text(text, mode, categories=categories)
     out = make_output_path(path)
     out.write_text(masked, encoding="utf-8")
     return out

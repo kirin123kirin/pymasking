@@ -23,24 +23,28 @@ def _has_sudachi_full() -> bool:
         return False
 
 
-def _load_name_set(filename: str) -> list[str]:
-    """data/ から姓名リストを読み込む（ファイルがなければ空リスト）。"""
-    path = _DATA_DIR / filename
-    if not path.exists():
-        return []
-    return [ln.strip() for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+def _load_name_patterns() -> dict:
+    """Load name data from gzip+pickle binary (DLP-safe format)."""
+    pkl_path = _DATA_DIR / "names_patterns.pkl.gz"
+    if not pkl_path.exists():
+        return {}
+    import gzip as _gzip
+    import pickle as _pickle
+    with _gzip.open(pkl_path, "rb") as f:
+        return _pickle.load(f)
 
 
 def _add_entity_ruler(nlp) -> bool:
-    """JMnedict データから EntityRuler を構築してパイプラインに追加する。
+    """Build EntityRuler from JMnedict binary data and add to pipeline.
 
-    GiNZA の NER を補完する形で after="ner" に配置。
-    overwrite_ents=False のため GiNZA 検出済みエンティティは上書きしない。
-    phrase_matcher_attr="NORM" で Sudachi の正規化形（旧字体→新字体等）を利用。
+    Placed after="ner" to complement GiNZA NER.
+    overwrite_ents=False so GiNZA-detected entities are not overwritten.
+    phrase_matcher_attr="NORM" uses Sudachi normalized forms for variant matching.
     """
-    person_names = _load_name_set("person_names.txt")  # 完全人名（最高信頼度）
-    surnames = _load_name_set("surnames.txt")           # 姓のみ（2文字以上）
-    given_names = _load_name_set("given_names.txt")     # 名のみ（2文字以上）
+    name_data = _load_name_patterns()
+    person_names = name_data.get("person_names", [])
+    surnames = name_data.get("surnames", [])
+    given_names = name_data.get("given_names", [])
 
     if not person_names and not surnames and not given_names:
         return False
@@ -72,19 +76,23 @@ def _add_entity_ruler(nlp) -> bool:
 
 
 def _setup_nlp():
-    """GiNZA モデルをロードし EntityRuler を追加して返す。"""
+    """Load GiNZA model, apply user dict if available, and add EntityRuler."""
     import spacy
 
-    # SudachiDict_full が利用可能なら tokenizer に適用
-    config: dict = {}
+    tokenizer_cfg: dict = {}
     if _has_sudachi_full():
-        config = {"nlp": {"tokenizer": {"dict_type": "full"}}}
+        tokenizer_cfg["dict_type"] = "full"
+
+    user_dic = _DATA_DIR / "names_user.dic"
+    if user_dic.exists():
+        tokenizer_cfg["user_dict"] = str(user_dic)
+
+    config: dict = {"nlp": {"tokenizer": tokenizer_cfg}} if tokenizer_cfg else {}
 
     def _load(path_or_name: str) -> "spacy.Language":
         try:
             return spacy.load(path_or_name, config=config)
         except Exception:
-            # dict_type 指定が効かない環境はデフォルト設定で再試行
             return spacy.load(path_or_name)
 
     if _MODEL_PATH.exists() and (_MODEL_PATH / "meta.json").exists():
@@ -503,7 +511,7 @@ def detect_amounts(text: str) -> List[Detection]:
 
 # ── 統合 ──────────────────────────────────────────────────────
 
-def detect_all(text: str) -> List[Detection]:
+def detect_all(text: str, categories: set = None) -> List[Detection]:
     results: List[Detection] = []
     results.extend(detect_dates(text))
     results.extend(detect_persons_orgs(text))
@@ -515,6 +523,8 @@ def detect_all(text: str) -> List[Detection]:
     results.extend(detect_serials(text))
     results.extend(detect_models(text))
     results.extend(detect_amounts(text))
+    if categories is not None:
+        results = [d for d in results if d.category in categories]
     return results
 
 

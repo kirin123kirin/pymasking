@@ -1,12 +1,10 @@
-"""JMnedict から姓名データを取得して data/ に保存する。
-
-出力ファイル:
-  data/surnames.txt     - 姓（surname エントリ）
-  data/given_names.txt  - 名（given / fem / masc エントリ）
-  data/person_names.txt - 完全人名（person エントリ）
-"""
+"""Download name data from JMnedict and save as Sudachi binary dict + gzip pickle."""
 
 import gzip
+import importlib.util
+import pickle
+import subprocess
+import sys
 import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -17,14 +15,10 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = REPO_ROOT / "data"
 XML_GZ = DATA_DIR / "JMnedict.xml.gz"
 
-# EntityRuler に追加する名前種別
 _SURNAME_TYPES = {"surname"}
 _GIVEN_TYPES = {"given", "fem", "masc"}
 _PERSON_TYPES = {"person"}
 
-# JMnedict DTD で定義されているエンティティを明示的に登録する。
-# Python の ElementTree は DTD の内部サブセットを環境によって解決しないため、
-# XMLParser.entity に事前注入することで &surname; 等を確実に文字列へ変換する。
 _JMNEDICT_ENTITIES: dict[str, str] = {
     "surname": "surname", "given": "given", "fem": "fem", "masc": "masc",
     "person": "person", "place": "place", "company": "company",
@@ -45,23 +39,23 @@ def _make_parser() -> ET.XMLParser:
 
 
 def download(url: str, dest: Path) -> None:
-    print(f"ダウンロード中: {url}")
+    print(f"Downloading: {url}")
 
     def _progress(count, block_size, total_size):
         pct = count * block_size * 100 // total_size
         print(f"\r  {pct}%", end="", flush=True)
 
     urllib.request.urlretrieve(url, dest, reporthook=_progress)
-    print(f"\r完了: {dest} ({dest.stat().st_size / 1024 / 1024:.1f} MB)")
+    print(f"\rDone: {dest} ({dest.stat().st_size / 1024 / 1024:.1f} MB)")
 
 
 def parse(xml_gz: Path) -> tuple[set[str], set[str], set[str]]:
-    """JMnedict を iterparse で解析し (surnames, given_names, person_names) を返す。"""
+    """Parse JMnedict and return (surnames, given_names, person_names)."""
     surnames: set[str] = set()
     given_names: set[str] = set()
     person_names: set[str] = set()
 
-    print("解析中（数分かかる場合があります）...")
+    print("Parsing (may take a few minutes)...")
 
     with gzip.open(xml_gz, "rb") as f:
         count = 0
@@ -74,7 +68,7 @@ def parse(xml_gz: Path) -> tuple[set[str], set[str], set[str]]:
                 ".//name_type") if nt.text for x in nt.text.split(" ")}
 
             for kf in kanji_forms:
-                if not kf or len(kf) < 2:   # 1文字エントリは誤検知リスク大のため除外
+                if not kf or len(kf) < 2:
                     continue
                 if name_types & _SURNAME_TYPES:
                     surnames.add(kf)
@@ -86,39 +80,111 @@ def parse(xml_gz: Path) -> tuple[set[str], set[str], set[str]]:
             elem.clear()
             count += 1
             if count % 50_000 == 0:
-                print(f"  {count:,} エントリ処理済み...")
+                print(f"  {count:,} entries processed...")
 
     print(
-        f"解析完了: 姓={len(surnames):,}件 / 名={len(given_names):,}件 / "
-        f"完全人名={len(person_names):,}件"
+        f"Parse complete: surnames={len(surnames):,} / given={len(given_names):,} / "
+        f"full_names={len(person_names):,}"
     )
     return surnames, given_names, person_names
 
 
+def _find_system_dic() -> Path | None:
+    """Find Sudachi system.dic from installed dictionary package."""
+    for pkg in ("sudachidict_full", "sudachidict_core", "sudachidict_small"):
+        try:
+            spec = importlib.util.find_spec(pkg)
+            if spec and spec.submodule_search_locations:
+                for loc in spec.submodule_search_locations:
+                    p = Path(loc) / "resources" / "system.dic"
+                    if p.exists():
+                        return p
+        except Exception:
+            pass
+    return None
+
+
+def _save_patterns_binary(surnames: set[str], given_names: set[str], person_names: set[str]) -> None:
+    """Save name lists as gzip+pickle for EntityRuler (DLP-safe binary format)."""
+    data = {
+        "surnames": sorted(surnames),
+        "given_names": sorted(given_names),
+        "person_names": sorted(person_names),
+    }
+    out = DATA_DIR / "names_patterns.pkl.gz"
+    with gzip.open(out, "wb") as f:
+        pickle.dump(data, f, protocol=4)
+    total = len(surnames) + len(given_names) + len(person_names)
+    print(f"  names_patterns.pkl.gz: {total:,} entries ({out.stat().st_size / 1024:.0f} KB)")
+
+
+def _build_sudachi_dict(surnames: set[str], given_names: set[str], person_names: set[str]) -> None:
+    """Build Sudachi binary user dictionary from name data."""
+    system_dic = _find_system_dic()
+    if not system_dic:
+        print("  [WARNING] Sudachi system.dic not found. Skipping binary dict build.")
+        return
+
+    csv_path = DATA_DIR / "_names_user_tmp.csv"
+    dic_path = DATA_DIR / "names_user.dic"
+    rows: list[str] = []
+
+    for name in sorted(person_names):
+        s = name.replace(",", "")
+        if not s:
+            continue
+        rows.append(f"{s},*,*,3000,{s},{s},{s},{s},名詞,固有名詞,人名,一般,*,*,{s},{s},*,*")
+    for name in sorted(surnames):
+        if len(name) < 2:
+            continue
+        s = name.replace(",", "")
+        rows.append(f"{s},*,*,3000,{s},{s},{s},{s},名詞,固有名詞,人名,姓,*,*,{s},{s},*,*")
+    for name in sorted(given_names):
+        if len(name) < 2:
+            continue
+        s = name.replace(",", "")
+        rows.append(f"{s},*,*,3000,{s},{s},{s},{s},名詞,固有名詞,人名,名,*,*,{s},{s},*,*")
+
+    csv_path.write_text("\n".join(rows), encoding="utf-8")
+    print(f"  Building Sudachi user dict ({len(rows):,} entries)...")
+
+    result = subprocess.run(
+        [sys.executable, "-m", "sudachipy", "ubuild",
+         "-s", str(system_dic), "-o", str(dic_path), str(csv_path)],
+        capture_output=True, text=True, timeout=300,
+    )
+    csv_path.unlink(missing_ok=True)
+
+    if result.returncode == 0:
+        print(f"  names_user.dic: {dic_path.stat().st_size / 1024:.0f} KB")
+    else:
+        print(f"  [WARNING] Sudachi dict build failed: {result.stderr[:300]}")
+
+
 def save(surnames: set[str], given_names: set[str], person_names: set[str]) -> None:
     DATA_DIR.mkdir(exist_ok=True)
+    print("Saving name data...")
+    _save_patterns_binary(surnames, given_names, person_names)
+    _build_sudachi_dict(surnames, given_names, person_names)
 
-    def _write(path: Path, data: set[str]) -> None:
-        path.write_text("\n".join(sorted(data)), encoding="utf-8")
-        print(f"  {path.name}: {len(data):,} 件")
-
-    print("保存中...")
-    _write(DATA_DIR / "surnames.txt", surnames)
-    _write(DATA_DIR / "given_names.txt", given_names)
-    _write(DATA_DIR / "person_names.txt", person_names)
+    for fname in ("surnames.txt", "given_names.txt", "person_names.txt"):
+        p = DATA_DIR / fname
+        if p.exists():
+            p.unlink()
+            print(f"  Removed legacy file: {fname}")
 
 
 def main() -> None:
     DATA_DIR.mkdir(exist_ok=True)
 
     if XML_GZ.exists():
-        print(f"既存ファイルを使用: {XML_GZ}")
+        print(f"Using existing file: {XML_GZ}")
     else:
         download(JMNEDICT_URL, XML_GZ)
 
     surnames, given_names, person_names = parse(XML_GZ)
     save(surnames, given_names, person_names)
-    print("\ndata/ ディレクトリへの保存完了。")
+    print("\nSaved to data/ directory.")
 
 
 if __name__ == "__main__":

@@ -10,9 +10,9 @@ from .cipher.unique import UniqueCounter
 MaskMode = Literal["blackout", "unique", "pigpen"]
 
 
-def mask_text(text: str, mode: MaskMode = "blackout") -> str:
+def mask_text(text: str, mode: MaskMode = "blackout", categories: set = None) -> str:
     """テキスト中のセンシティブ情報をマスキングして返す。"""
-    detections = resolve_overlaps(detect_all(text))
+    detections = resolve_overlaps(detect_all(text, categories=categories))
     if not detections:
         return text
 

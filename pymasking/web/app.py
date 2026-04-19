@@ -72,8 +72,11 @@ def create_app() -> Flask:
         if mode not in ("blackout", "unique", "pigpen"):
             return jsonify({"error": "不正な mode"}), 400
 
+        cats = data.get("categories")
+        categories = set(cats) if cats else None
+
         from pymasking.core.masker import mask_text
-        result = mask_text(text, mode)
+        result = mask_text(text, mode, categories=categories)
         return jsonify({"result": result})
 
     @app.route("/api/unmask/text", methods=["POST"])
@@ -94,6 +97,11 @@ def create_app() -> Flask:
         if mode not in ("blackout", "unique", "pigpen"):
             return jsonify({"error": "不正な mode"}), 400
 
+        cats_str = request.form.get("categories", "").strip()
+        categories = set(cats_str.split(",")) if cats_str else None
+        opts_str = request.form.get("options", "").strip()
+        options = {k: True for k in opts_str.split(",") if k.strip()} if opts_str else {}
+
         filename = Path(f.filename).name if f.filename else ""
         ext = Path(filename).suffix.lower()
         if not filename or ext not in _ALLOWED_EXTS:
@@ -105,7 +113,7 @@ def create_app() -> Flask:
 
             from pymasking.core.extractor import process_file
             try:
-                out = process_file(src, mode)
+                out = process_file(src, mode, categories=categories, options=options)
             except Exception as e:
                 app.logger.exception("api_mask_file error")
                 return jsonify({"error": str(e)}), 500

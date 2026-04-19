@@ -20,14 +20,14 @@ _UNMASK_EXTS = {
 }
 
 
-def process_file(file_path: Union[str, Path], mode: str = "blackout") -> Path:
+def process_file(file_path: Union[str, Path], mode: str = "blackout", categories=None, options=None) -> Path:
     """ファイルをマスキング処理し、出力ファイルパスを返す。"""
     path = Path(file_path)
     ext = path.suffix.lower()
 
     if ext in (".docx", ".xlsx", ".pptx"):
         from .office import process_office
-        return process_office(path, mode)
+        return process_office(path, mode, categories=categories, options=options)
     elif ext in _IMAGE_EXTS:
         from .image import process_image
         return process_image(path)
@@ -36,7 +36,7 @@ def process_file(file_path: Union[str, Path], mode: str = "blackout") -> Path:
         return process_pdf(path)
     else:
         from .plaintext import process_text
-        return process_text(path, mode)
+        return process_text(path, mode, categories=categories)
 
 
 def unmask_file(file_path: Union[str, Path]) -> Path:

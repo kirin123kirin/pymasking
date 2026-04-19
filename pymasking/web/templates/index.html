@@ -13,6 +13,7 @@
   .card { background: #fff; border-radius: 8px; padding: 24px; margin-bottom: 24px;
           box-shadow: 0 2px 8px rgba(0,0,0,.08); }
   h2 { font-size: 1.1rem; margin-bottom: 16px; color: #1a1a2e; }
+  h3 { font-size: .9rem; color: #555; margin-bottom: 8px; font-weight: 600; }
   label { display: block; font-size: .85rem; color: #555; margin-bottom: 4px; }
   textarea { width: 100%; height: 160px; border: 1px solid #cdd; border-radius: 6px;
              padding: 10px; font-size: .9rem; resize: vertical; font-family: inherit; }
@@ -44,6 +45,15 @@
   .status { font-size: .82rem; color: #666; margin-top: 6px; }
   .status.ok { color: #2d6a4f; }
   .status.err { color: #e63946; }
+  .category-box { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;
+                  padding: 12px 16px; margin-bottom: 12px; }
+  .category-grid { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 6px; }
+  .category-grid label { display: inline-flex; align-items: center; gap: 5px;
+                          font-size: .85rem; color: #333; cursor: pointer; margin: 0; }
+  .category-grid input[type=checkbox] { cursor: pointer; }
+  .option-grid { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 6px; }
+  .option-grid label { display: inline-flex; align-items: center; gap: 5px;
+                        font-size: .85rem; color: #333; cursor: pointer; margin: 0; }
 </style>
 </head>
 <body>
@@ -74,6 +84,27 @@
         <button class="btn-secondary" onclick="unmaskText()">暗号化解除（暗号化方式でマスキングされてる場合のみ）</button>
         <button class="btn-secondary" onclick="copyResult('text-result')">結果をコピー</button>
       </div>
+
+      <div class="category-box">
+        <h3>マスキング対象 <span style="font-size:.8rem;color:#888;font-weight:400">（チェックした種別のみマスク）</span>
+          <button type="button" onclick="setAllCategories('text',true)" style="margin-left:12px;padding:2px 8px;font-size:.78rem;font-weight:400;background:#e9ecef;border:none;border-radius:4px;cursor:pointer">全選択</button>
+          <button type="button" onclick="setAllCategories('text',false)" style="padding:2px 8px;font-size:.78rem;font-weight:400;background:#e9ecef;border:none;border-radius:4px;cursor:pointer">全解除</button>
+        </h3>
+        <div class="category-grid" id="text-categories">
+          <label><input type="checkbox" value="人物" checked> 氏名</label>
+          <label><input type="checkbox" value="組織" checked> 組織</label>
+          <label><input type="checkbox" value="住所" checked> 住所</label>
+          <label><input type="checkbox" value="日付" checked> 日付</label>
+          <label><input type="checkbox" value="電話" checked> 電話番号</label>
+          <label><input type="checkbox" value="メール" checked> メール</label>
+          <label><input type="checkbox" value="SNS" checked> SNS</label>
+          <label><input type="checkbox" value="特許" checked> 特許番号</label>
+          <label><input type="checkbox" value="シリアル" checked> シリアル番号</label>
+          <label><input type="checkbox" value="型番" checked> 型番</label>
+          <label><input type="checkbox" value="金額" checked> 金額</label>
+        </div>
+      </div>
+
       <label>入力テキスト（Ctrl+V でも貼り付け可能）</label>
       <textarea id="text-input" placeholder="センシティブ情報を含むテキストをここに入力..."></textarea>
       <div class="status" id="text-status"></div>
@@ -98,6 +129,35 @@
           </select>
         </div>
       </div>
+
+      <div class="category-box">
+        <h3>マスキング対象 <span style="font-size:.8rem;color:#888;font-weight:400">（チェックした種別のみマスク）</span>
+          <button type="button" onclick="setAllCategories('file',true)" style="margin-left:12px;padding:2px 8px;font-size:.78rem;font-weight:400;background:#e9ecef;border:none;border-radius:4px;cursor:pointer">全選択</button>
+          <button type="button" onclick="setAllCategories('file',false)" style="padding:2px 8px;font-size:.78rem;font-weight:400;background:#e9ecef;border:none;border-radius:4px;cursor:pointer">全解除</button>
+        </h3>
+        <div class="category-grid" id="file-categories">
+          <label><input type="checkbox" value="人物" checked> 氏名</label>
+          <label><input type="checkbox" value="組織" checked> 組織</label>
+          <label><input type="checkbox" value="住所" checked> 住所</label>
+          <label><input type="checkbox" value="日付" checked> 日付</label>
+          <label><input type="checkbox" value="電話" checked> 電話番号</label>
+          <label><input type="checkbox" value="メール" checked> メール</label>
+          <label><input type="checkbox" value="SNS" checked> SNS</label>
+          <label><input type="checkbox" value="特許" checked> 特許番号</label>
+          <label><input type="checkbox" value="シリアル" checked> シリアル番号</label>
+          <label><input type="checkbox" value="型番" checked> 型番</label>
+          <label><input type="checkbox" value="金額" checked> 金額</label>
+        </div>
+      </div>
+
+      <div class="category-box" id="file-options-box">
+        <h3>追加オプション <span style="font-size:.8rem;color:#888;font-weight:400">（ファイル種別に応じて適用）</span></h3>
+        <div class="option-grid">
+          <label><input type="checkbox" id="opt-word-headers" value="word_remove_headers" checked> Word: ヘッダー・フッターを削除</label>
+          <label><input type="checkbox" id="opt-pptx-master" value="pptx_remove_non_placeholders" checked> PowerPoint: スライドマスタのロゴ・著作権表示を削除</label>
+        </div>
+      </div>
+
       <div class="drop-zone" id="drop-zone"
            onclick="document.getElementById('file-input').click()"
            ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
@@ -148,16 +208,41 @@ function switchTab(name) {
   document.getElementById('tab-' + name).classList.add('active');
 }
 
+// ── カテゴリ取得 ──────────────────────────────
+function getCategories(prefix) {
+  const boxes = document.querySelectorAll(`#${prefix}-categories input[type=checkbox]`);
+  const all = Array.from(boxes);
+  if (all.every(cb => cb.checked)) return null;  // 全ON → null（全カテゴリ）
+  const selected = all.filter(cb => cb.checked).map(cb => cb.value);
+  return selected.length ? selected : null;
+}
+
+function setAllCategories(prefix, checked) {
+  document.querySelectorAll(`#${prefix}-categories input[type=checkbox]`).forEach(cb => {
+    cb.checked = checked;
+  });
+}
+
+// ── ファイルオプション取得 ──────────────────────
+function getFileOptions() {
+  const opts = [];
+  document.querySelectorAll('#file-options-box input[type=checkbox]').forEach(cb => {
+    if (cb.checked) opts.push(cb.value);
+  });
+  return opts.join(',');
+}
+
 // ── テキスト処理 ──────────────────────────────
 async function maskText() {
   const text = document.getElementById('text-input').value;
   const mode = document.getElementById('text-mode').value;
+  const categories = getCategories('text');
   setStatus('text-status', '処理中...', '');
   try {
     const res = await fetch('/api/mask/text', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({text, mode})
+      body: JSON.stringify({text, mode, categories})
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -219,10 +304,14 @@ function selectFile(f) {
 async function maskFile() {
   if (!_selectedFile) return;
   const mode = document.getElementById('file-mode').value;
+  const categories = getCategories('file');
+  const options = getFileOptions();
   setStatus('file-status', '処理中...', '');
   const fd = new FormData();
   fd.append('file', _selectedFile);
   fd.append('mode', mode);
+  if (categories) fd.append('categories', categories.join(','));
+  if (options) fd.append('options', options);
   try {
     const res = await fetch('/api/mask/file', {method: 'POST', body: fd});
     if (!res.ok) {
