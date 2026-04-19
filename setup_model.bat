@@ -79,8 +79,16 @@ echo.
 echo [3/8] Installing dependencies...
 "%PYTHON%" -m pip install --no-warn-script-location ^
   click flask python-docx openpyxl python-pptx ^
-  Pillow PyMuPDF pytesseract python-dateutil ^
+  Pillow PyMuPDF python-dateutil ^
   pyperclip chardet pywin32
+if errorlevel 1 goto :error
+
+echo Installing PyTorch (CPU only)...
+"%PYTHON%" -m pip install --no-warn-script-location torch --index-url https://download.pytorch.org/whl/cpu
+if errorlevel 1 goto :error
+
+echo Installing surya-ocr...
+"%PYTHON%" -m pip install --no-warn-script-location surya-ocr
 if errorlevel 1 goto :error
 
 echo.
@@ -113,40 +121,14 @@ if errorlevel 1 (
 )
 
 echo.
-echo [8/8] Installing Tesseract OCR v5.5.0 with Japanese language data...
-set TESSERACT_DIR=%INSTALL_DIR%\scripts\tesseract
-set TESSERACT_EXE=%TESSERACT_DIR%\tesseract.exe
-if exist "%TESSERACT_EXE%" (
-    echo Tesseract already installed: %TESSERACT_EXE%
-    goto :tesseract_done
-)
-set TESS_URL=https://github.com/UB-Mannheim/tesseract/releases/download/v5.5.0.20241111/tesseract-ocr-w64-setup-5.5.0.20241111.exe
-set TESS_INSTALLER=%TEMP%\tesseract-setup.exe
-echo Downloading Tesseract installer (~60MB)...
-powershell -NoProfile -Command "Invoke-WebRequest -Uri '%TESS_URL%' -OutFile '%TESS_INSTALLER%'"
+echo [8/8] Downloading surya-ocr models (~500MB, first run only)...
+set HF_HOME=%INSTALL_DIR%\data\models\hf_cache
+set PYTHONPATH=%INSTALL_DIR%
+"%PYTHON%" "%INSTALL_DIR%\scripts\download_surya_models.py"
 if errorlevel 1 (
-    echo [WARNING] Failed to download Tesseract. Image OCR will not be available.
-    goto :tesseract_done
+    echo [WARNING] Failed to download surya-ocr models.
+    echo          Image OCR will not be available until models are downloaded.
 )
-echo Installing Tesseract to %TESSERACT_DIR%...
-"%TESS_INSTALLER%" /S /D=%TESSERACT_DIR%
-del "%TESS_INSTALLER%" >nul 2>&1
-if not exist "%TESSERACT_EXE%" (
-    echo [WARNING] Tesseract installation failed.
-    goto :tesseract_done
-)
-echo Downloading Japanese language data...
-set TESSDATA_DIR=%TESSERACT_DIR%\tessdata
-set TESSDATA_BASE=https://github.com/tesseract-ocr/tessdata/raw/main
-powershell -NoProfile -Command "Invoke-WebRequest -Uri '%TESSDATA_BASE%/jpn.traineddata' -OutFile '%TESSDATA_DIR%\jpn.traineddata'"
-if errorlevel 1 echo [WARNING] Failed to download jpn.traineddata.
-powershell -NoProfile -Command "Invoke-WebRequest -Uri '%TESSDATA_BASE%/jpn_vert.traineddata' -OutFile '%TESSDATA_DIR%\jpn_vert.traineddata'"
-if errorlevel 1 echo [WARNING] Failed to download jpn_vert.traineddata.
-if not exist "%TESSDATA_DIR%\script" mkdir "%TESSDATA_DIR%\script"
-powershell -NoProfile -Command "Invoke-WebRequest -Uri '%TESSDATA_BASE%/script/Japanese.traineddata' -OutFile '%TESSDATA_DIR%\script\Japanese.traineddata'"
-if errorlevel 1 echo [WARNING] Failed to download script/Japanese.traineddata.
-echo Tesseract installed: %TESSERACT_EXE%
-:tesseract_done
 
 echo.
 echo [Post-1] Generating favicon.ico...
@@ -169,16 +151,18 @@ if errorlevel 1 (
 
 echo.
 echo [Post-3] Removing temporary files...
-if exist "%INSTALL_DIR%\scripts\download_model.py"  del /f /q "%INSTALL_DIR%\scripts\download_model.py"
-if exist "%INSTALL_DIR%\scripts\download_names.py"  del /f /q "%INSTALL_DIR%\scripts\download_names.py"
-if exist "%INSTALL_DIR%\data\JMnedict.xml.gz"        del /f /q "%INSTALL_DIR%\data\JMnedict.xml.gz"
-if exist "%INSTALL_DIR%\pyproject.toml"              del /f /q "%INSTALL_DIR%\pyproject.toml"
+if exist "%INSTALL_DIR%\scripts\download_model.py"        del /f /q "%INSTALL_DIR%\scripts\download_model.py"
+if exist "%INSTALL_DIR%\scripts\download_names.py"        del /f /q "%INSTALL_DIR%\scripts\download_names.py"
+if exist "%INSTALL_DIR%\scripts\download_surya_models.py" del /f /q "%INSTALL_DIR%\scripts\download_surya_models.py"
+if exist "%INSTALL_DIR%\data\JMnedict.xml.gz"             del /f /q "%INSTALL_DIR%\data\JMnedict.xml.gz"
+if exist "%INSTALL_DIR%\pyproject.toml"                   del /f /q "%INSTALL_DIR%\pyproject.toml"
 
 echo.
 echo ============================================================
 echo  Setup Complete
 echo  Install directory : %INSTALL_DIR%
 echo  GiNZA model       : %INSTALL_DIR%\data\models\ja_ginza
+echo  surya-ocr models  : %INSTALL_DIR%\data\models\hf_cache
 echo  Desktop           : pymasking.lnk (Web UI shortcut)
 echo  mask.bat          : Mask file or clipboard
 echo  unmask.bat        : Unmask file or clipboard
