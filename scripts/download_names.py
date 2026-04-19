@@ -70,7 +70,8 @@ def parse(xml_gz: Path) -> tuple[set[str], set[str], set[str]]:
                 continue
 
             kanji_forms = [ke.text for ke in elem.findall("k_ele/keb") if ke.text]
-            name_types = {nt.text for nt in elem.findall(".//name_type") if nt.text}
+            name_types = {x for nt in elem.findall(
+                ".//name_type") if nt.text for x in nt.text.split(" ")}
 
             for kf in kanji_forms:
                 if not kf or len(kf) < 2:   # 1文字エントリは誤検知リスク大のため除外
