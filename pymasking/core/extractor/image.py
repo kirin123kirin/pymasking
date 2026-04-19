@@ -1,10 +1,43 @@
 """画像ファイルの視覚的マスキング処理（OCR で検出 → 黒塗り）。"""
 
+import os
 from pathlib import Path
 from typing import List, Tuple
 
 from ..detector import detect_all, resolve_overlaps
 from . import make_output_path
+
+_TESSERACT_CANDIDATES = [
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+    r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+]
+
+
+def _configure_tesseract() -> None:
+    """PATH になければよくあるインストール先を探して tesseract_cmd を設定する。"""
+    import shutil
+    import pytesseract
+
+    if shutil.which("tesseract"):
+        return
+
+    username = os.environ.get("USERNAME", "")
+    candidates = _TESSERACT_CANDIDATES + [
+        rf"C:\Users\{username}\AppData\Local\Tesseract-OCR\tesseract.exe",
+    ]
+    for p in candidates:
+        if Path(p).exists():
+            pytesseract.pytesseract.tesseract_cmd = p
+            tessdata = str(Path(p).parent / "tessdata")
+            if "TESSDATA_PREFIX" not in os.environ:
+                os.environ["TESSDATA_PREFIX"] = tessdata
+            return
+
+    raise RuntimeError(
+        "Tesseract-OCR が見つかりません。\n"
+        "https://github.com/UB-Mannheim/tesseract/wiki から\n"
+        "インストーラーをダウンロードして jpn 言語データも含めてインストールしてください。"
+    )
 
 
 def _get_sensitive_words(text: str) -> List[str]:
@@ -32,8 +65,9 @@ def process_image(src: Path) -> Path:
     except ImportError as e:
         raise RuntimeError(f"pytesseract または Pillow が必要です: {e}") from e
 
-    img = Image.open(src).convert("RGB")
+    _configure_tesseract()
 
+    img = Image.open(src).convert("RGB")
     data = pytesseract.image_to_data(
         img, lang="jpn+eng", output_type=pytesseract.Output.DICT
     )
@@ -74,6 +108,8 @@ def process_image_data(img, mode: str = "blackout") -> "Image":
         from PIL import Image
     except ImportError as e:
         raise RuntimeError(f"pytesseract または Pillow が必要です: {e}") from e
+
+    _configure_tesseract()
 
     img = img.convert("RGB")
     data = pytesseract.image_to_data(
