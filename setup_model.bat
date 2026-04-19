@@ -119,6 +119,10 @@ if errorlevel 1 (
 echo.
 echo [7/7] Downloading surya-ocr models (~500MB, first run only)...
 set MODEL_CACHE_DIR=%INSTALL_DIR%\data\models\hf_cache
+if exist "%MODEL_CACHE_DIR%" (
+    echo   Clearing old model cache to ensure version compatibility...
+    rmdir /s /q "%MODEL_CACHE_DIR%"
+)
 set PYTHONPATH=%INSTALL_DIR%
 "%PYTHON%" "%INSTALL_DIR%\scripts\download_surya_models.py"
 if errorlevel 1 (
