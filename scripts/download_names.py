@@ -2,7 +2,6 @@
 
 import gzip
 import importlib.util
-import pickle
 import subprocess
 import sys
 import urllib.request
@@ -104,20 +103,6 @@ def _find_system_dic() -> Path | None:
     return None
 
 
-def _save_patterns_binary(surnames: set[str], given_names: set[str], person_names: set[str]) -> None:
-    """Save name lists as gzip+pickle for EntityRuler (DLP-safe binary format)."""
-    data = {
-        "surnames": sorted(surnames),
-        "given_names": sorted(given_names),
-        "person_names": sorted(person_names),
-    }
-    out = DATA_DIR / "names_patterns.pkl.gz"
-    with gzip.open(out, "wb") as f:
-        pickle.dump(data, f, protocol=4)
-    total = len(surnames) + len(given_names) + len(person_names)
-    print(f"  names_patterns.pkl.gz: {total:,} entries ({out.stat().st_size / 1024:.0f} KB)")
-
-
 def _build_sudachi_dict(surnames: set[str], given_names: set[str], person_names: set[str]) -> None:
     """Build Sudachi binary user dictionary from name data."""
     system_dic = _find_system_dic()
@@ -148,12 +133,14 @@ def _build_sudachi_dict(surnames: set[str], given_names: set[str], person_names:
     csv_path.write_text("\n".join(rows), encoding="utf-8")
     print(f"  Building Sudachi user dict ({len(rows):,} entries)...")
 
-    result = subprocess.run(
-        [sys.executable, "-m", "sudachipy", "ubuild",
-         "-s", str(system_dic), "-o", str(dic_path), str(csv_path)],
-        capture_output=True, text=True, timeout=300,
-    )
-    csv_path.unlink(missing_ok=True)
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "sudachipy", "ubuild",
+             "-s", str(system_dic), "-o", str(dic_path), str(csv_path)],
+            capture_output=True, text=True, timeout=300,
+        )
+    finally:
+        csv_path.unlink(missing_ok=True)
 
     if result.returncode == 0:
         print(f"  names_user.dic: {dic_path.stat().st_size / 1024:.0f} KB")
@@ -164,10 +151,9 @@ def _build_sudachi_dict(surnames: set[str], given_names: set[str], person_names:
 def save(surnames: set[str], given_names: set[str], person_names: set[str]) -> None:
     DATA_DIR.mkdir(exist_ok=True)
     print("Saving name data...")
-    _save_patterns_binary(surnames, given_names, person_names)
     _build_sudachi_dict(surnames, given_names, person_names)
 
-    for fname in ("surnames.txt", "given_names.txt", "person_names.txt"):
+    for fname in ("surnames.txt", "given_names.txt", "person_names.txt", "names_patterns.pkl.gz"):
         p = DATA_DIR / fname
         if p.exists():
             p.unlink()

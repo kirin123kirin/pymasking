@@ -23,60 +23,8 @@ def _has_sudachi_full() -> bool:
         return False
 
 
-def _load_name_patterns() -> dict:
-    """Load name data from gzip+pickle binary (DLP-safe format)."""
-    pkl_path = _DATA_DIR / "names_patterns.pkl.gz"
-    if not pkl_path.exists():
-        return {}
-    import gzip as _gzip
-    import pickle as _pickle
-    with _gzip.open(pkl_path, "rb") as f:
-        return _pickle.load(f)
-
-
-def _add_entity_ruler(nlp) -> bool:
-    """Build EntityRuler from JMnedict binary data and add to pipeline.
-
-    Placed after="ner" to complement GiNZA NER.
-    overwrite_ents=False so GiNZA-detected entities are not overwritten.
-    phrase_matcher_attr="NORM" uses Sudachi normalized forms for variant matching.
-    """
-    name_data = _load_name_patterns()
-    person_names = name_data.get("person_names", [])
-    surnames = name_data.get("surnames", [])
-    given_names = name_data.get("given_names", [])
-
-    if not person_names and not surnames and not given_names:
-        return False
-
-    ruler = nlp.add_pipe(
-        "entity_ruler",
-        after="ner",
-        config={
-            "overwrite_ents": False,
-            "phrase_matcher_attr": "NORM",  # 旧字体・異体字を正規化後にマッチ
-        },
-    )
-
-    patterns: list[dict] = []
-    # 完全人名：最も信頼度が高い（誤検知リスク低）
-    for name in person_names:
-        patterns.append({"label": "Person", "pattern": name})
-    # 姓：2文字以上のみ（1文字姓は一般語との区別が困難）
-    for name in surnames:
-        if len(name) >= 2:
-            patterns.append({"label": "Person", "pattern": name})
-    # 名：2文字以上のみ（単独での誤検知を緩和）
-    for name in given_names:
-        if len(name) >= 2:
-            patterns.append({"label": "Person", "pattern": name})
-
-    ruler.add_patterns(patterns)
-    return True
-
-
 def _setup_nlp():
-    """Load GiNZA model, apply user dict if available, and add EntityRuler."""
+    """Load GiNZA model with user dict if available."""
     import spacy
 
     tokenizer_cfg: dict = {}
@@ -100,7 +48,6 @@ def _setup_nlp():
     else:
         nlp = _load("ja_ginza")
 
-    _add_entity_ruler(nlp)
     return nlp
 
 
