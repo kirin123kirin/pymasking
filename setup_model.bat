@@ -100,7 +100,7 @@ if exist "%NUMPY_LIBS%" set PATH=%NUMPY_LIBS%;%PATH%
 
 echo.
 echo [5/8] Installing SudachiDict_full (high-accuracy dictionary, ~800MB)...
-"%PYTHON%" -m pip install --no-warn-script-location sudachidict_full
+"%PYTHON%" -m pip install --no-warn-script-location sudachipy sudachidict_full
 if errorlevel 1 (
     echo [WARNING] Failed to install sudachidict_full.
     echo          Using standard dictionary ^(sudachidict_core^) instead.
