@@ -20,7 +20,11 @@ def _has_sudachi_full() -> bool:
 
 
 def _setup_nlp():
-    """Load ja_ginza from the installed package (scripts/runtime/Lib/site-packages)."""
+    """Load ja_ginza from the installed package (scripts/runtime/Lib/site-packages).
+
+    compound_splitter is excluded because ja_ginza 5.x ships split_mode=null which
+    fails confection validation on newer spacy versions. NER does not depend on it.
+    """
     import spacy
 
     tokenizer_cfg: dict = {}
@@ -31,14 +35,11 @@ def _setup_nlp():
     if user_dic.exists():
         tokenizer_cfg["user_dict"] = str(user_dic)
 
-    config: dict = {"components": {"compound_splitter": {"split_mode": "C"}}}
+    kwargs: dict = {"exclude": ["compound_splitter"]}
     if tokenizer_cfg:
-        config["nlp"] = {"tokenizer": tokenizer_cfg}
+        kwargs["config"] = {"nlp": {"tokenizer": tokenizer_cfg}}
 
-    try:
-        return spacy.load("ja_ginza", config=config)
-    except Exception:
-        return spacy.load("ja_ginza")
+    return spacy.load("ja_ginza", **kwargs)
 
 
 try:
