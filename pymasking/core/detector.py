@@ -333,6 +333,14 @@ def detect_dates(text: str) -> List[Detection]:
 def detect_persons_orgs(text: str) -> List[Detection]:
     results: List[Detection] = []
 
+    # カスタム辞書は GiNZA 有無に関わらず常に実行
+    for word in _custom_persons:
+        for m in re.finditer(re.escape(word), text):
+            results.append(Detection(m.start(), m.end(), "人物", m.group()))
+    for word in _custom_orgs:
+        for m in re.finditer(re.escape(word), text):
+            results.append(Detection(m.start(), m.end(), "組織", m.group()))
+
     if _HAS_GINZA and _nlp is not None:
         doc = _nlp(text)
         for ent in doc.ents:
@@ -340,15 +348,11 @@ def detect_persons_orgs(text: str) -> List[Detection]:
                 results.append(Detection(ent.start_char, ent.end_char, "人物", ent.text))
             elif ent.label_ in ("ORG", "Organization", "Company"):
                 results.append(Detection(ent.start_char, ent.end_char, "組織", ent.text))
-        return results
-
-    # A: カスタム辞書
-    for word in _custom_persons:
-        for m in re.finditer(re.escape(word), text):
+        # 既知姓パターンも併用して敬称なし名前の検出漏れを補完
+        pat_d = rf"({_SURNAME_PAT})([\u4E00-\u9FFF]{{1,3}})(?![\u4E00-\u9FFF])"
+        for m in re.finditer(pat_d, text):
             results.append(Detection(m.start(), m.end(), "人物", m.group()))
-    for word in _custom_orgs:
-        for m in re.finditer(re.escape(word), text):
-            results.append(Detection(m.start(), m.end(), "組織", m.group()))
+        return results
 
     # B: 役職・敬称の直前テキスト
     pat_b = rf"([\u3040-\u9FFF]{{1,6}})(?:{_TITLE_PAT})"

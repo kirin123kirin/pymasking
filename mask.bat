@@ -19,20 +19,5 @@ if not exist "%PYTHON%" (
     exit /b 1
 )
 
-if not exist "%GINZA_MODEL_PATH%\meta.json" (
-    echo [WARNING] GiNZA model not found: %GINZA_MODEL_PATH%
-    echo          Please run setup_model.bat first.
-    echo          Running in fallback mode ^(without GiNZA^).
-    echo(
-)
-
-set PORT=59631
-if not "%1"=="" set PORT=%1
-
-echo Starting Web UI: http://127.0.0.1:%PORT%
-echo Press Ctrl+C to stop.
-echo.
-
 cd /d "%REPO_DIR%"
-"%PYTHON%" -m pymasking.cli.main web --port %PORT%
-exit /b 0
+"%PYTHON%" -m pymasking.cli.main mask %*

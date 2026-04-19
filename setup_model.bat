@@ -144,7 +144,8 @@ echo  Setup Complete
 echo  Install directory : %INSTALL_DIR%
 echo  GiNZA model       : %INSTALL_DIR%\data\models\ja_ginza
 echo  Desktop           : pymasking.lnk (Web UI shortcut)
-echo  start_cli.bat     : Launch CLI
+echo  mask.bat          : Mask file or clipboard
+echo  unmask.bat        : Unmask file or clipboard
 echo  start_web.bat     : Launch Web UI
 echo ============================================================
 pause

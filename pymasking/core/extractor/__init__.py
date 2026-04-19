@@ -19,7 +19,7 @@ def process_file(file_path: Union[str, Path], mode: str = "blackout") -> Path:
     if ext in (".docx", ".xlsx", ".pptx"):
         from .office import process_office
         return process_office(path, mode)
-    elif ext in (".jpg", ".jpeg", ".png"):
+    elif ext in (".jpg", ".jpeg", ".png", ".bmp"):
         from .image import process_image
         return process_image(path)
     elif ext == ".pdf":

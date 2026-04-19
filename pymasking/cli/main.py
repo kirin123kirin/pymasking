@@ -1,11 +1,11 @@
 """CLI エントリーポイント。
 
 使用例:
-  pymasking mask report.docx
-  pymasking mask report.docx --mode pigpen
-  pymasking mask --clipboard
-  pymasking unmask report_masked.txt
-  pymasking web
+  mask.bat report.docx
+  mask.bat report.docx --mode pigpen
+  mask.bat                          (クリップボードから入力)
+  unmask.bat report_masked.txt
+  unmask.bat                        (クリップボードから入力)
 """
 
 import click
@@ -30,13 +30,11 @@ def cli():
 )
 @click.option("--clipboard", "-c", is_flag=True, help="クリップボードから入力")
 def mask(file, mode, clipboard):
-    """FILE または クリップボードのセンシティブ情報をマスキングする。"""
-    if clipboard:
+    """FILE または クリップボードのセンシティブ情報をマスキングする。FILE 省略時はクリップボードを使用。"""
+    if clipboard or file is None:
         _mask_clipboard(mode)
-    elif file:
-        _mask_file(Path(file), mode)
     else:
-        raise click.UsageError("FILE を指定するか --clipboard を使用してください。")
+        _mask_file(Path(file), mode)
 
 
 def _mask_file(path: Path, mode: str) -> None:
@@ -82,10 +80,21 @@ def _mask_clipboard(mode: str) -> None:
 # ── unmask コマンド ────────────────────────────────────────────
 
 @cli.command()
-@click.argument("file", type=click.Path(exists=True))
+@click.argument("file", required=False, type=click.Path(exists=True))
 def unmask(file):
-    """ピッグペン暗号化されたテキストファイルを復号する。"""
+    """ピッグペン暗号化されたテキストファイルを復号する。FILE 省略時はクリップボードを使用。"""
     from pymasking.core.masker import unmask_text
+
+    if file is None:
+        from pymasking.core.extractor.clipboard import get_clipboard, save_to_temp, open_with_default_app
+        kind, content = get_clipboard()
+        if kind != "text":
+            raise click.ClickException("クリップボードにテキストがありません。")
+        restored = unmask_text(content)
+        out = save_to_temp(restored, suffix=".txt")
+        click.echo(f"復号完了 → {out}")
+        open_with_default_app(out)
+        return
 
     path = Path(file)
     text = path.read_text(encoding="utf-8", errors="replace")
@@ -103,9 +112,13 @@ def unmask(file):
 @click.option("--debug", is_flag=True, hidden=True)
 def web(host, port, debug):
     """Web インターフェースを起動する。"""
+    import threading
+    import webbrowser
     from pymasking.web.app import create_app
     app = create_app()
-    click.echo(f"Web UI: http://{host}:{port}")
+    url = f"http://{host}:{port}"
+    click.echo(f"Web UI: {url}")
+    threading.Timer(1.5, lambda: webbrowser.open(url)).start()
     app.run(host=host, port=port, debug=debug)
 
 

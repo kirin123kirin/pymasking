@@ -4,8 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>pymasking</title>
-<link rel="icon" type="image/png" href="/static/favicon.png">
-<link rel="shortcut icon" href="/static/favicon.ico">
+<link rel="icon" href="/static/favicon.ico">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: "Segoe UI", sans-serif; background: #f4f6f8; color: #333; }
@@ -64,15 +63,15 @@
       <h2>テキストマスキング</h2>
       <div class="row">
         <div>
-          <label>方式</label>
+          <label>マスキングの方法</label>
           <select id="text-mode">
-            <option value="blackout">伏字（●）</option>
-            <option value="unique">一意性保持</option>
-            <option value="pigpen">ピッグペン暗号</option>
+            <option value="blackout">「●」で塗りつぶす</option>
+            <option value="unique">「氏名1」などの文字に置き換える</option>
+            <option value="pigpen">暗号化(元に戻せるよ)</option>
           </select>
         </div>
         <button class="btn-primary" onclick="maskText()">マスキング実行</button>
-        <button class="btn-secondary" onclick="unmaskText()">復号（ピッグペンのみ）</button>
+        <button class="btn-secondary" onclick="unmaskText()">暗号化解除（暗号化方式でマスキングされてる場合のみ）</button>
         <button class="btn-secondary" onclick="copyResult('text-result')">結果をコピー</button>
       </div>
       <label>入力テキスト（Ctrl+V でも貼り付け可能）</label>
@@ -87,15 +86,15 @@
     <div class="card">
       <h2>ファイルマスキング</h2>
       <p style="font-size:.85rem;color:#666;margin-bottom:12px">
-        対応形式: docx / xlsx / pptx / pdf / jpg / png / txt / csv / json など
+        対応形式: docx / xlsx / pptx / pdf / jpg / png / bmp / txt / csv / json など
       </p>
       <div class="row">
         <div>
-          <label>方式（画像・PDF は視覚的塗りつぶし固定）</label>
+          <label>マスキングの方法</label>
           <select id="file-mode">
-            <option value="blackout">伏字（●）</option>
-            <option value="unique">一意性保持</option>
-            <option value="pigpen">ピッグペン暗号</option>
+            <option value="blackout">「●」で塗りつぶす</option>
+            <option value="unique">「氏名1」などの文字に置き換える</option>
+            <option value="pigpen">暗号化(元に戻せるよ)</option>
           </select>
         </div>
       </div>
@@ -225,8 +224,9 @@ async function maskFile() {
   try {
     const res = await fetch('/api/mask/file', {method: 'POST', body: fd});
     if (!res.ok) {
-      const d = await res.json();
-      throw new Error(d.error || res.statusText);
+      let msg = res.statusText;
+      try { const d = await res.json(); msg = d.error || msg; } catch {}
+      throw new Error(msg);
     }
     const blob = await res.blob();
     const cd = res.headers.get('Content-Disposition') || '';
@@ -269,8 +269,9 @@ async function maskClipboardImage() {
   try {
     const res = await fetch('/api/mask/image', {method: 'POST', body: fd});
     if (!res.ok) {
-      const d = await res.json();
-      throw new Error(d.error || res.statusText);
+      let msg = res.statusText;
+      try { const d = await res.json(); msg = d.error || msg; } catch {}
+      throw new Error(msg);
     }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);

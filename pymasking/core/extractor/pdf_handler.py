@@ -8,6 +8,13 @@ from . import make_output_path
 
 def process_pdf(src: Path) -> Path:
     """センシティブテキストを検出し、PDF 上で黒矩形により視覚的に塗りつぶす。"""
+    import os, sys
+    try:
+        pymupdf_dir = Path(sys.executable).parent / "Lib" / "site-packages" / "pymupdf"
+        if pymupdf_dir.exists() and hasattr(os, "add_dll_directory"):
+            os.add_dll_directory(str(pymupdf_dir))
+    except Exception:
+        pass
     try:
         import fitz  # PyMuPDF
     except ImportError as e:
