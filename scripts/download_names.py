@@ -134,22 +134,27 @@ def _build_sudachi_dict(surnames: set[str], given_names: set[str], person_names:
     print(f"  Building Sudachi user dict ({len(rows):,} entries)...")
 
     try:
-        scripts_dir = Path(sys.executable).parent / "Scripts"
-        sudachipy_exe = scripts_dir / "sudachipy.exe"
-        if not sudachipy_exe.exists():
-            sudachipy_exe = scripts_dir / "sudachipy"
-        result = subprocess.run(
-            [str(sudachipy_exe), "ubuild",
-             "-s", str(system_dic), "-o", str(dic_path), str(csv_path)],
-            capture_output=True, text=True, timeout=300,
-        )
+        import sudachipy.command_line as _cl
+        _saved = sys.argv[:]
+        sys.argv = ["sudachipy", "ubuild", "-s", str(system_dic), "-o", str(dic_path), str(csv_path)]
+        try:
+            _cl.main()
+        finally:
+            sys.argv = _saved
+    except SystemExit as e:
+        if e.code not in (None, 0):
+            print(f"  [WARNING] Sudachi dict build failed (exit {e.code})")
+            return
+    except Exception as e:
+        print(f"  [WARNING] Sudachi dict build failed: {e}")
+        return
     finally:
         csv_path.unlink(missing_ok=True)
 
-    if result.returncode == 0:
+    if dic_path.exists():
         print(f"  names_user.dic: {dic_path.stat().st_size / 1024:.0f} KB")
     else:
-        print(f"  [WARNING] Sudachi dict build failed: {result.stderr[:300]}")
+        print("  [WARNING] names_user.dic was not created")
 
 
 def save(surnames: set[str], given_names: set[str], person_names: set[str]) -> None:

@@ -51,6 +51,17 @@ powershell -NoProfile -Command ^
 if errorlevel 1 goto :error
 
 :copy_dlls
+set VCRT_MISSING=0
+for %%D in (msvcp140.dll vcruntime140.dll vcruntime140_1.dll) do (
+    if not exist "%SystemRoot%\System32\%%D" set VCRT_MISSING=1
+)
+if %VCRT_MISSING%==1 (
+    echo   Visual C++ Redistributable not found. Installing...
+    set VCRT_EXE=%TEMP%\vc_redist.x64.exe
+    powershell -NoProfile -Command "Invoke-WebRequest -Uri 'https://aka.ms/vs/17/release/vc_redist.x64.exe' -OutFile '%VCRT_EXE%'"
+    "%VCRT_EXE%" /install /quiet /norestart
+    del "%VCRT_EXE%"
+)
 for %%D in (msvcp140.dll msvcp140_1.dll msvcp140_2.dll vcruntime140.dll vcruntime140_1.dll concrt140.dll) do (
     if exist "%SystemRoot%\System32\%%D" (
         copy /y "%SystemRoot%\System32\%%D" "%RUNTIME_DIR%\%%D" >nul 2>&1
