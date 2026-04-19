@@ -2,7 +2,6 @@
 setlocal
 set REPO_DIR=%~dp0
 set PYTHON=%REPO_DIR%scripts\runtime\python.exe
-set GINZA_MODEL_PATH=%REPO_DIR%data\models\ja_ginza
 set MODEL_CACHE_DIR=%REPO_DIR%data\models\hf_cache
 set PYTHONPATH=%REPO_DIR%
 

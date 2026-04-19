@@ -7,11 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
 
-import os as _os
-
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-_DEFAULT_MODEL_DIR = _REPO_ROOT / "data" / "models" / "ja_ginza"
-_MODEL_PATH = Path(_os.environ.get("GINZA_MODEL_PATH", str(_DEFAULT_MODEL_DIR)))
 _DATA_DIR = _REPO_ROOT / "data"
 
 
@@ -23,22 +19,8 @@ def _has_sudachi_full() -> bool:
         return False
 
 
-def _resolve_model_path(base: Path) -> Path | None:
-    """Find actual spaCy model dir (needs both meta.json and config.cfg).
-
-    Handles nested structures like ja_ginza/ja_ginza-5.2.0/ where the package
-    root has meta.json but config.cfg only exists in the versioned subdirectory.
-    """
-    if (base / "meta.json").exists() and (base / "config.cfg").exists():
-        return base
-    for subdir in sorted(base.iterdir()):
-        if subdir.is_dir() and (subdir / "meta.json").exists() and (subdir / "config.cfg").exists():
-            return subdir
-    return None
-
-
 def _setup_nlp():
-    """Load GiNZA model with user dict if available."""
+    """Load ja_ginza from the installed package (scripts/runtime/Lib/site-packages)."""
     import spacy
 
     tokenizer_cfg: dict = {}
@@ -49,25 +31,14 @@ def _setup_nlp():
     if user_dic.exists():
         tokenizer_cfg["user_dict"] = str(user_dic)
 
-    # split_mode=None in GiNZA config.cfg is rejected by newer confection as non-str.
-    # Override to "C" (default mode) to suppress the validation error.
     config: dict = {"components": {"compound_splitter": {"split_mode": "C"}}}
     if tokenizer_cfg:
         config["nlp"] = {"tokenizer": tokenizer_cfg}
 
-    def _load(path_or_name: str) -> "spacy.Language":
-        try:
-            return spacy.load(path_or_name, config=config)
-        except Exception:
-            return spacy.load(path_or_name)
-
-    model_path = _resolve_model_path(_MODEL_PATH) if _MODEL_PATH.exists() else None
-    if model_path:
-        nlp = _load(str(model_path))
-    else:
-        nlp = _load("ja_ginza")
-
-    return nlp
+    try:
+        return spacy.load("ja_ginza", config=config)
+    except Exception:
+        return spacy.load("ja_ginza")
 
 
 try:
