@@ -38,6 +38,11 @@ _ALLOWED_EXTS = {
     ".jpg", ".jpeg", ".png", ".bmp", ".pdf",
 }
 
+_UNMASK_EXTS = {
+    ".txt", ".csv", ".json", ".xml", ".md", ".log",
+    ".docx", ".xlsx", ".pptx",
+}
+
 
 def create_app() -> Flask:
     logging.getLogger("werkzeug").addFilter(_NoHeartbeatFilter())
@@ -102,6 +107,36 @@ def create_app() -> Flask:
             try:
                 out = process_file(src, mode)
             except Exception as e:
+                app.logger.exception("api_mask_file error")
+                return jsonify({"error": str(e)}), 500
+
+            return send_file(
+                io.BytesIO(out.read_bytes()),
+                as_attachment=True,
+                download_name=out.name,
+                mimetype="application/octet-stream",
+            )
+
+    @app.route("/api/unmask/file", methods=["POST"])
+    def api_unmask_file():
+        if "file" not in request.files:
+            return jsonify({"error": "ファイルが見つかりません"}), 400
+
+        f = request.files["file"]
+        filename = Path(f.filename).name if f.filename else ""
+        ext = Path(filename).suffix.lower()
+        if not filename or ext not in _UNMASK_EXTS:
+            return jsonify({"error": f"暗号化解除は画像・PDF に対応していません: {ext}"}), 400
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            src = Path(tmpdir) / filename
+            f.save(src)
+
+            from pymasking.core.extractor import unmask_file
+            try:
+                out = unmask_file(src)
+            except Exception as e:
+                app.logger.exception("api_unmask_file error")
                 return jsonify({"error": str(e)}), 500
 
             return send_file(
@@ -132,6 +167,7 @@ def create_app() -> Flask:
         try:
             masked = process_image_data(img)
         except Exception as e:
+            app.logger.exception("api_mask_image error")
             return jsonify({"error": str(e)}), 500
 
         buf = io.BytesIO()

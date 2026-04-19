@@ -106,8 +106,9 @@
       </div>
       <input type="file" id="file-input" style="display:none" onchange="onFileSelect(event)">
       <div class="status" id="file-status"></div>
-      <div style="margin-top:12px">
+      <div style="margin-top:12px;display:flex;gap:8px;">
         <button class="btn-primary" id="file-btn" onclick="maskFile()" disabled>マスキング実行 → ダウンロード</button>
+        <button class="btn-secondary" id="file-unmask-btn" onclick="unmaskFile()" disabled>暗号化解除 → ダウンロード</button>
       </div>
     </div>
   </div>
@@ -211,6 +212,7 @@ function selectFile(f) {
   _selectedFile = f;
   document.getElementById('drop-zone').textContent = `選択済: ${f.name} (${(f.size/1024).toFixed(1)} KB)`;
   document.getElementById('file-btn').disabled = false;
+  document.getElementById('file-unmask-btn').disabled = false;
   setStatus('file-status', '', '');
 }
 
@@ -237,6 +239,32 @@ async function maskFile() {
     a.href = url; a.download = name; a.click();
     URL.revokeObjectURL(url);
     setStatus('file-status', '✓ ダウンロード開始', 'ok');
+  } catch (e) {
+    setStatus('file-status', '✗ ' + e.message, 'err');
+  }
+}
+
+async function unmaskFile() {
+  if (!_selectedFile) return;
+  setStatus('file-status', '復号中...', '');
+  const fd = new FormData();
+  fd.append('file', _selectedFile);
+  try {
+    const res = await fetch('/api/unmask/file', {method: 'POST', body: fd});
+    if (!res.ok) {
+      let msg = res.statusText;
+      try { const d = await res.json(); msg = d.error || msg; } catch {}
+      throw new Error(msg);
+    }
+    const blob = await res.blob();
+    const cd = res.headers.get('Content-Disposition') || '';
+    const fnMatch = cd.match(/filename="?([^"]+)"?/);
+    const name = fnMatch ? fnMatch[1] : 'unmasked_file';
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name; a.click();
+    URL.revokeObjectURL(url);
+    setStatus('file-status', '✓ 復号完了・ダウンロード開始', 'ok');
   } catch (e) {
     setStatus('file-status', '✗ ' + e.message, 'err');
   }
