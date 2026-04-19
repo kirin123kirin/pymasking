@@ -7,7 +7,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 HF_CACHE = REPO_ROOT / "data" / "models" / "hf_cache"
 HF_CACHE.mkdir(parents=True, exist_ok=True)
-os.environ.setdefault("HF_HOME", str(HF_CACHE))
+os.environ.setdefault("MODEL_CACHE_DIR", str(HF_CACHE))
 
 print(f"Downloading surya-ocr models to: {HF_CACHE}")
 print("This may take several minutes on first run (~500MB)...")

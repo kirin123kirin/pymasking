@@ -18,7 +18,7 @@ _rec_processor = None
 
 def _ensure_hf_home() -> None:
     _HF_CACHE.mkdir(parents=True, exist_ok=True)
-    os.environ.setdefault("HF_HOME", str(_HF_CACHE))
+    os.environ.setdefault("MODEL_CACHE_DIR", str(_HF_CACHE))
 
 
 def _load_models() -> None:

@@ -3,7 +3,7 @@ setlocal
 set REPO_DIR=%~dp0
 set PYTHON=%REPO_DIR%scripts\runtime\python.exe
 set GINZA_MODEL_PATH=%REPO_DIR%data\models\ja_ginza
-set HF_HOME=%REPO_DIR%data\models\hf_cache
+set MODEL_CACHE_DIR=%REPO_DIR%data\models\hf_cache
 set PYTHONPATH=%REPO_DIR%
 
 set NUMPY_LIBS=%REPO_DIR%scripts\runtime\Lib\site-packages\numpy\.libs

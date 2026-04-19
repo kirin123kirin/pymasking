@@ -122,7 +122,7 @@ if errorlevel 1 (
 
 echo.
 echo [8/8] Downloading surya-ocr models (~500MB, first run only)...
-set HF_HOME=%INSTALL_DIR%\data\models\hf_cache
+set MODEL_CACHE_DIR=%INSTALL_DIR%\data\models\hf_cache
 set PYTHONPATH=%INSTALL_DIR%
 "%PYTHON%" "%INSTALL_DIR%\scripts\download_surya_models.py"
 if errorlevel 1 (
