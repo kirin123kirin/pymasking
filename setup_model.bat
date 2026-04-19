@@ -97,7 +97,11 @@ echo [4/7] Installing dependencies...
   click flask python-docx openpyxl python-pptx ^
   Pillow PyMuPDF python-dateutil ^
   pyperclip chardet pywin32 ^
-  surya-ocr ja-ginza spacy
+  ja-ginza spacy
+if errorlevel 1 goto :error
+
+echo Installing surya-ocr (latest)...
+"%PYTHON%" -m pip install --no-warn-script-location --upgrade surya-ocr
 if errorlevel 1 goto :error
 
 if exist "%NUMPY_LIBS%" set PATH=%NUMPY_LIBS%;%PATH%
