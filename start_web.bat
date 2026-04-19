@@ -19,8 +19,8 @@ if not exist "%PYTHON%" (
 if not exist "%GINZA_MODEL_PATH%\meta.json" (
     echo [WARNING] GiNZA model not found: %GINZA_MODEL_PATH%
     echo          Please run setup_model.bat first.
-    echo          Running in fallback mode (without GiNZA).
-    echo.
+    echo          Running in fallback mode ^(without GiNZA^).
+    echo(
 )
 
 set PORT=59631
