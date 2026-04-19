@@ -8,12 +8,14 @@ set PYTHONPATH=%REPO_DIR%
 set NUMPY_LIBS=%REPO_DIR%scripts\runtime\Lib\site-packages\numpy\.libs
 if not exist "%NUMPY_LIBS%" set NUMPY_LIBS=%REPO_DIR%scripts\runtime\Lib\site-packages\numpy\libs
 set PYMUPDF_DIR=%REPO_DIR%scripts\runtime\Lib\site-packages\pymupdf
-set TESSERACT_DIR=C:\Program Files\Tesseract-OCR
+set TESSERACT_DIR=%REPO_DIR%scripts\tesseract
+if not exist "%TESSERACT_DIR%\tesseract.exe" set TESSERACT_DIR=C:\Program Files\Tesseract-OCR
 if not exist "%TESSERACT_DIR%\tesseract.exe" set TESSERACT_DIR=C:\Program Files (x86)\Tesseract-OCR
 set PATH=%REPO_DIR%scripts\runtime;%PATH%
 if exist "%NUMPY_LIBS%" set PATH=%NUMPY_LIBS%;%PATH%
 if exist "%PYMUPDF_DIR%" set PATH=%PYMUPDF_DIR%;%PATH%
 if exist "%TESSERACT_DIR%" set PATH=%TESSERACT_DIR%;%PATH%
+if exist "%TESSERACT_DIR%\tessdata" set TESSDATA_PREFIX=%TESSERACT_DIR%\tessdata
 
 if not exist "%PYTHON%" (
     echo [ERROR] Python runtime not found: %PYTHON%

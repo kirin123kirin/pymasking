@@ -7,7 +7,10 @@ from typing import List, Tuple
 from ..detector import detect_all, resolve_overlaps
 from . import make_output_path
 
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+
 _TESSERACT_CANDIDATES = [
+    str(_REPO_ROOT / "scripts" / "tesseract" / "tesseract.exe"),  # 同梱パス（最優先）
     r"C:\Program Files\Tesseract-OCR\tesseract.exe",
     r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
 ]
@@ -27,10 +30,10 @@ def _configure_tesseract() -> None:
     ]
     for p in candidates:
         if Path(p).exists():
-            pytesseract.pytesseract.tesseract_cmd = p
-            tessdata = str(Path(p).parent / "tessdata")
-            if "TESSDATA_PREFIX" not in os.environ:
-                os.environ["TESSDATA_PREFIX"] = tessdata
+            pytesseract.pytesseract.tesseract_cmd = str(p)
+            tessdata = Path(p).parent / "tessdata"
+            if tessdata.exists():
+                os.environ["TESSDATA_PREFIX"] = str(tessdata)
             return
 
     raise RuntimeError(
