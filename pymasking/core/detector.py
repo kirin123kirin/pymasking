@@ -5,18 +5,9 @@ import calendar
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-_DATA_DIR = _REPO_ROOT / "data"
-
-
-def _has_sudachi_full() -> bool:
-    try:
-        import sudachidict_full  # noqa: F401
-        return True
-    except ImportError:
-        return False
 
 
 def _setup_nlp():
