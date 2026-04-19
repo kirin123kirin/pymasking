@@ -14,6 +14,7 @@ _det_model = None
 _det_processor = None
 _rec_model = None
 _rec_processor = None
+_surya_new_api = None  # True = predictor-based (>=0.6), False = model/processor (<0.6)
 
 
 def _ensure_hf_home() -> None:
@@ -22,10 +23,23 @@ def _ensure_hf_home() -> None:
 
 
 def _load_models() -> None:
-    global _det_model, _det_processor, _rec_model, _rec_processor
+    global _det_model, _det_processor, _rec_model, _rec_processor, _surya_new_api
     if _det_model is not None:
         return
     _ensure_hf_home()
+    # surya >= 0.6: predictor-based API
+    try:
+        from surya.detection import DetectionPredictor
+        from surya.recognition import RecognitionPredictor
+        _det_model = DetectionPredictor()
+        _rec_model = RecognitionPredictor()
+        _det_processor = None
+        _rec_processor = None
+        _surya_new_api = True
+        return
+    except ImportError:
+        pass
+    # surya < 0.6: model/processor API
     try:
         from surya.model.detection.model import (
             load_model as load_det,
@@ -33,12 +47,14 @@ def _load_models() -> None:
         )
         from surya.model.recognition.model import load_model as load_rec
         from surya.model.recognition.processor import load_processor as load_rec_proc
+        _det_model = load_det()
+        _det_processor = load_det_proc()
+        _rec_model = load_rec()
+        _rec_processor = load_rec_proc()
+        _surya_new_api = False
+        return
     except ImportError as e:
         raise RuntimeError(f"surya-ocr が必要です: pip install surya-ocr\n{e}") from e
-    _det_model = load_det()
-    _det_processor = load_det_proc()
-    _rec_model = load_rec()
-    _rec_processor = load_rec_proc()
 
 
 def _ocr_lines(image) -> List[Tuple[str, Tuple[int, int, int, int]]]:
@@ -46,14 +62,17 @@ def _ocr_lines(image) -> List[Tuple[str, Tuple[int, int, int, int]]]:
     _load_models()
     from surya.ocr import run_ocr
 
-    results = run_ocr(
-        [image],
-        [["ja", "en"]],
-        _det_model,
-        _det_processor,
-        _rec_model,
-        _rec_processor,
-    )
+    if _surya_new_api:
+        results = run_ocr([image], [["ja", "en"]], _det_model, _rec_model)
+    else:
+        results = run_ocr(
+            [image],
+            [["ja", "en"]],
+            _det_model,
+            _det_processor,
+            _rec_model,
+            _rec_processor,
+        )
     lines: List[Tuple[str, Tuple[int, int, int, int]]] = []
     if results and results[0].text_lines:
         for line in results[0].text_lines:
