@@ -49,7 +49,11 @@ def _setup_nlp():
     if user_dic.exists():
         tokenizer_cfg["user_dict"] = str(user_dic)
 
-    config: dict = {"nlp": {"tokenizer": tokenizer_cfg}} if tokenizer_cfg else {}
+    # split_mode=None in GiNZA config.cfg is rejected by newer confection as non-str.
+    # Override to "C" (default mode) to suppress the validation error.
+    config: dict = {"components": {"compound_splitter": {"split_mode": "C"}}}
+    if tokenizer_cfg:
+        config["nlp"] = {"tokenizer": tokenizer_cfg}
 
     def _load(path_or_name: str) -> "spacy.Language":
         try:
