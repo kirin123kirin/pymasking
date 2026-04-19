@@ -24,11 +24,15 @@ def _has_sudachi_full() -> bool:
 
 
 def _resolve_model_path(base: Path) -> Path | None:
-    """Find actual spaCy model dir; handles nested structures like ja_ginza/ja_ginza-5.2.0/."""
-    if (base / "meta.json").exists():
+    """Find actual spaCy model dir (needs both meta.json and config.cfg).
+
+    Handles nested structures like ja_ginza/ja_ginza-5.2.0/ where the package
+    root has meta.json but config.cfg only exists in the versioned subdirectory.
+    """
+    if (base / "meta.json").exists() and (base / "config.cfg").exists():
         return base
     for subdir in sorted(base.iterdir()):
-        if subdir.is_dir() and (subdir / "meta.json").exists():
+        if subdir.is_dir() and (subdir / "meta.json").exists() and (subdir / "config.cfg").exists():
             return subdir
     return None
 
