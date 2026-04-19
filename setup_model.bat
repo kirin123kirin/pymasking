@@ -27,7 +27,7 @@ set PATH=%RUNTIME_DIR%;%PATH%
 if exist "%NUMPY_LIBS%" set PATH=%NUMPY_LIBS%;%PATH%
 
 echo.
-echo [1/7] Preparing Python 3.12.10 embedded runtime...
+echo [1/6] Preparing Python 3.12.10 embedded runtime...
 if exist "%PYTHON%" (
     echo Using existing Python runtime: %PYTHON%
     goto :install_pip
@@ -61,7 +61,7 @@ echo Python runtime ready: %RUNTIME_DIR%
 powershell -NoProfile -Command ^
   "$p='%RUNTIME_DIR%\python312._pth'; if(Test-Path $p){$c=(Get-Content $p -Raw); if($c -notmatch 'import site'){$c+=[Environment]::NewLine+'import site'}; if($c -notmatch [regex]::Escape('%INSTALL_DIR%')){$c+=[Environment]::NewLine+'%INSTALL_DIR%'}; Set-Content $p $c.TrimEnd()}"
 echo.
-echo [2/7] Installing pip...
+echo [2/6] Installing pip...
 "%PYTHON%" -m pip --version >nul 2>&1
 if not errorlevel 1 (
     echo pip is already installed.
@@ -76,27 +76,19 @@ del "%GETPIP%"
 
 :install_torch
 echo.
-echo [3/7] Installing PyTorch (CPU only)...
+echo [3/6] Installing PyTorch (CPU only)...
 "%PYTHON%" -m pip install --no-warn-script-location torch --index-url https://download.pytorch.org/whl/cpu
 if errorlevel 1 goto :error
 
 echo.
-echo [4/7] Installing dependencies (pyproject.toml)...
+echo [4/6] Installing dependencies (pyproject.toml)...
 "%PYTHON%" -m pip install --no-warn-script-location "%INSTALL_DIR%"
 if errorlevel 1 goto :error
 
 if exist "%NUMPY_LIBS%" set PATH=%NUMPY_LIBS%;%PATH%
 
 echo.
-echo [5/7] Installing SudachiDict_full (high-accuracy dictionary, ~800MB)...
-"%PYTHON%" -m pip install --no-warn-script-location sudachipy sudachidict_full
-if errorlevel 1 (
-    echo [WARNING] Failed to install sudachidict_full.
-    echo          Using standard dictionary ^(sudachidict_core^) instead.
-)
-
-echo.
-echo [6/7] Downloading JMnedict name data (~30MB, first run only)...
+echo [5/6] Downloading JMnedict name data (~30MB, first run only)...
 set PYTHONPATH=%INSTALL_DIR%
 "%PYTHON%" "%INSTALL_DIR%\scripts\download_names.py"
 if errorlevel 1 (
@@ -105,7 +97,7 @@ if errorlevel 1 (
 )
 
 echo.
-echo [7/7] Downloading surya-ocr models (~500MB, first run only)...
+echo [6/6] Downloading surya-ocr models (~500MB, first run only)...
 set MODEL_CACHE_DIR=%INSTALL_DIR%\data\models\hf_cache
 set PYTHONPATH=%INSTALL_DIR%
 "%PYTHON%" "%INSTALL_DIR%\scripts\download_surya_models.py"

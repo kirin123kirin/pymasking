@@ -22,10 +22,8 @@ dependencies = [
     "pywin32>=306; sys_platform == 'win32'",
     "ja-ginza>=5.2",
     "spacy>=3.7",
+    "sudachidict_full",
 ]
-
-[project.optional-dependencies]
-nlp-full = ["sudachidict_full"]
 
 [tool.setuptools.packages.find]
 where = ["."]
