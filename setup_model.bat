@@ -27,7 +27,7 @@ set PATH=%RUNTIME_DIR%;%PATH%
 if exist "%NUMPY_LIBS%" set PATH=%NUMPY_LIBS%;%PATH%
 
 echo.
-echo [1/7] Preparing Python 3.12.10 embedded runtime...
+echo [1/5] Preparing Python 3.12.10 embedded runtime...
 if exist "%PYTHON%" (
     echo Using existing Python runtime: %PYTHON%
     goto :copy_dlls
@@ -72,7 +72,7 @@ echo Python runtime ready: %RUNTIME_DIR%
 powershell -NoProfile -Command ^
   "$p='%RUNTIME_DIR%\python312._pth'; if(Test-Path $p){$c=(Get-Content $p -Raw); if($c -notmatch 'import site'){$c+=[Environment]::NewLine+'import site'}; if($c -notmatch [regex]::Escape('%INSTALL_DIR%')){$c+=[Environment]::NewLine+'%INSTALL_DIR%'}; Set-Content $p $c.TrimEnd()}"
 echo.
-echo [2/7] Installing pip...
+echo [2/5] Installing pip...
 "%PYTHON%" -m pip --version >nul 2>&1
 if not errorlevel 1 (
     echo pip is already installed.
@@ -87,12 +87,12 @@ del "%GETPIP%"
 
 :install_torch
 echo.
-echo [3/7] Installing PyTorch (CPU only)...
+echo [3/5] Installing PyTorch (CPU only)...
 "%PYTHON%" -m pip install --no-warn-script-location torch --index-url https://download.pytorch.org/whl/cpu
 if errorlevel 1 goto :error
 
 echo.
-echo [4/7] Installing dependencies...
+echo [4/5] Installing dependencies...
 "%PYTHON%" -m pip install --no-warn-script-location ^
   click flask python-docx openpyxl python-pptx ^
   Pillow PyMuPDF python-dateutil ^
@@ -107,32 +107,9 @@ if errorlevel 1 goto :error
 if exist "%NUMPY_LIBS%" set PATH=%NUMPY_LIBS%;%PATH%
 
 echo.
-echo [5/7] Installing SudachiDict_full (high-accuracy dictionary, ~800MB)...
+echo [5/5] Installing SudachiDict_full (high-accuracy dictionary, ~800MB)...
 "%PYTHON%" -m pip install --no-warn-script-location sudachipy sudachidict_full
 if errorlevel 1 goto :error
-
-echo.
-echo [6/7] Downloading JMnedict name data (~30MB, first run only)...
-set PYTHONPATH=%INSTALL_DIR%
-"%PYTHON%" "%INSTALL_DIR%\scripts\download_names.py"
-if errorlevel 1 (
-    echo [WARNING] Failed to download JMnedict data.
-    echo          Running in GiNZA-only mode.
-)
-
-echo.
-echo [7/7] Downloading surya-ocr models (~500MB, first run only)...
-set MODEL_CACHE_DIR=%INSTALL_DIR%\data\models\hf_cache
-if exist "%MODEL_CACHE_DIR%" (
-    echo   Clearing old model cache to ensure version compatibility...
-    rmdir /s /q "%MODEL_CACHE_DIR%"
-)
-set PYTHONPATH=%INSTALL_DIR%
-"%PYTHON%" "%INSTALL_DIR%\scripts\download_surya_models.py"
-if errorlevel 1 (
-    echo [WARNING] Failed to download surya-ocr models.
-    echo          Image OCR will not be available until models are downloaded.
-)
 
 echo.
 echo [Post-1] Generating favicon.ico...
@@ -164,7 +141,7 @@ echo ============================================================
 echo  Setup Complete
 echo  Install directory : %INSTALL_DIR%
 echo  GiNZA model       : scripts\runtime\Lib\site-packages\ja_ginza
-echo  surya-ocr models  : %INSTALL_DIR%\data\models\hf_cache
+echo  surya-ocr models  : downloaded on first image OCR use
 echo  Desktop           : pymasking.lnk (Web UI shortcut)
 echo  mask.bat          : Mask file or clipboard
 echo  unmask.bat        : Unmask file or clipboard
