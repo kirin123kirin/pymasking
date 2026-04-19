@@ -37,7 +37,7 @@ set EMBED_URL=https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd
 set EMBED_ZIP=%TEMP%\python-3.12.10-embed-amd64.zip
 
 echo Downloading: %EMBED_URL%
-powershell -NoProfile -UseBasicParsing -Command "Invoke-WebRequest -Uri '%EMBED_URL%' -OutFile '%EMBED_ZIP%'"
+powershell -NoProfile -Command "Invoke-WebRequest -UseBasicParsing -Uri '%EMBED_URL%' -OutFile '%EMBED_ZIP%'"
 if errorlevel 1 goto :error
 
 echo Extracting to: %RUNTIME_DIR%
@@ -57,7 +57,7 @@ for %%D in (msvcp140.dll vcruntime140.dll vcruntime140_1.dll) do (
 )
 if %VCRT_MISSING%==1 (
     echo   Visual C++ Redistributable not found. Installing...
-    powershell -NoProfile -UseBasicParsing -Command "Invoke-WebRequest -Uri 'https://aka.ms/vs/17/release/vc_redist.x64.exe' -OutFile '%TEMP%\vc_redist.x64.exe'"
+    powershell -NoProfile -Command "Invoke-WebRequest -UseBasicParsing -Uri 'https://aka.ms/vs/17/release/vc_redist.x64.exe' -OutFile '%TEMP%\vc_redist.x64.exe'"
     "%TEMP%\vc_redist.x64.exe" /install /quiet /norestart
     del /f /q "%TEMP%\vc_redist.x64.exe"
 )
@@ -79,7 +79,7 @@ if not errorlevel 1 (
     goto :install_torch
 )
 set GETPIP=%TEMP%\get-pip.py
-powershell -NoProfile -UseBasicParsing -Command "Invoke-WebRequest -Uri 'https://bootstrap.pypa.io/get-pip.py' -OutFile '%GETPIP%'"
+powershell -NoProfile -Command "Invoke-WebRequest -UseBasicParsing -Uri 'https://bootstrap.pypa.io/get-pip.py' -OutFile '%GETPIP%'"
 if errorlevel 1 goto :error
 "%PYTHON%" "%GETPIP%" --no-warn-script-location
 if errorlevel 1 goto :error
