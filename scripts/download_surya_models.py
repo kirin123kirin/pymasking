@@ -1,5 +1,6 @@
 """Pre-download surya-ocr models to data/models/hf_cache."""
 
+import inspect
 import os
 import sys
 from pathlib import Path
@@ -17,9 +18,13 @@ try:
     from surya.detection import DetectionPredictor
     from surya.recognition import RecognitionPredictor
     print("  Loading detection predictor...")
-    DetectionPredictor()
+    det = DetectionPredictor()
     print("  Loading recognition predictor...")
-    RecognitionPredictor()
+    rec_params = inspect.signature(RecognitionPredictor.__init__).parameters
+    if "foundation_predictor" in rec_params:
+        RecognitionPredictor(det)
+    else:
+        RecognitionPredictor()
 except ImportError:
     # surya < 0.6: model/processor API
     try:

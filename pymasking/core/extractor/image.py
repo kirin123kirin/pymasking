@@ -31,8 +31,13 @@ def _load_models() -> None:
     try:
         from surya.detection import DetectionPredictor
         from surya.recognition import RecognitionPredictor
+        import inspect
         _det_model = DetectionPredictor()
-        _rec_model = RecognitionPredictor()
+        rec_params = inspect.signature(RecognitionPredictor.__init__).parameters
+        if "foundation_predictor" in rec_params:
+            _rec_model = RecognitionPredictor(_det_model)
+        else:
+            _rec_model = RecognitionPredictor()
         _det_processor = None
         _rec_processor = None
         _surya_new_api = True
