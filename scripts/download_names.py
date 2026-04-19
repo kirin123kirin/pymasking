@@ -134,8 +134,12 @@ def _build_sudachi_dict(surnames: set[str], given_names: set[str], person_names:
     print(f"  Building Sudachi user dict ({len(rows):,} entries)...")
 
     try:
+        scripts_dir = Path(sys.executable).parent / "Scripts"
+        sudachipy_exe = scripts_dir / "sudachipy.exe"
+        if not sudachipy_exe.exists():
+            sudachipy_exe = scripts_dir / "sudachipy"
         result = subprocess.run(
-            [sys.executable, "-m", "sudachipy", "ubuild",
+            [str(sudachipy_exe), "ubuild",
              "-s", str(system_dic), "-o", str(dic_path), str(csv_path)],
             capture_output=True, text=True, timeout=300,
         )
