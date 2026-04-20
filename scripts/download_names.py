@@ -208,7 +208,7 @@ def _build_sudachi_dict(surnames: set[str], given_names: set[str], person_names:
         if not s or "\n" in s or "\r" in s:
             skip_pre += 1
             continue
-        rows.append(f"{s},0,0,3000,{s},{s},{s},{s},名詞,固有名詞,人名,一般,,,*,*,,")
+        rows.append(f"{s},4786,4786,5000,{s},名詞,固有名詞,人名,一般,*,*,*,{s},*,*,*,*,*")
     for name in sorted(surnames):
         if len(name) < 2:
             continue
@@ -216,7 +216,7 @@ def _build_sudachi_dict(surnames: set[str], given_names: set[str], person_names:
         if not s or "\n" in s or "\r" in s:
             skip_pre += 1
             continue
-        rows.append(f"{s},0,0,3000,{s},{s},{s},{s},名詞,固有名詞,人名,姓,,,*,*,,")
+        rows.append(f"{s},4786,4786,5000,{s},名詞,固有名詞,人名,姓,*,*,*,{s},*,*,*,*,*")
     for name in sorted(given_names):
         if len(name) < 2:
             continue
@@ -224,7 +224,7 @@ def _build_sudachi_dict(surnames: set[str], given_names: set[str], person_names:
         if not s or "\n" in s or "\r" in s:
             skip_pre += 1
             continue
-        rows.append(f"{s},0,0,3000,{s},{s},{s},{s},名詞,固有名詞,人名,名,,,*,*,,")
+        rows.append(f"{s},4786,4786,5000,{s},名詞,固有名詞,人名,名,*,*,*,{s},*,*,*,*,*")
 
     print(f"  Building Sudachi user dict ({len(rows):,} entries)...")
     if skip_pre:
