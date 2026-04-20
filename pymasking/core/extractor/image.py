@@ -39,9 +39,12 @@ def _load_models() -> None:
             if not hasattr(cfg, 'bbox_size'):
                 cfg.bbox_size = 4
         rec_params = inspect.signature(RecognitionPredictor.__init__).parameters
-        if "foundation_predictor" in rec_params:
-            _rec_model = RecognitionPredictor(_det_model)
-        else:
+        try:
+            if "foundation_predictor" in rec_params:
+                _rec_model = RecognitionPredictor(_det_model)
+            else:
+                _rec_model = RecognitionPredictor()
+        except (AttributeError, TypeError):
             _rec_model = RecognitionPredictor()
         _det_processor = None
         _rec_processor = None

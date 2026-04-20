@@ -24,9 +24,12 @@ try:
         det.model.config.bbox_size = 4
     print("  Loading recognition predictor...")
     rec_params = inspect.signature(RecognitionPredictor.__init__).parameters
-    if "foundation_predictor" in rec_params:
-        RecognitionPredictor(det)
-    else:
+    try:
+        if "foundation_predictor" in rec_params:
+            RecognitionPredictor(det)
+        else:
+            RecognitionPredictor()
+    except (AttributeError, TypeError):
         RecognitionPredictor()
 except ImportError:
     # surya < 0.6: model/processor API

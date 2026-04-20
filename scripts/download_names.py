@@ -114,21 +114,37 @@ def _build_sudachi_dict(surnames: set[str], given_names: set[str], person_names:
     dic_path = DATA_DIR / "names_user.dic"
     rows: list[str] = []
 
+    # 18-column sudachipy ubuild format:
+    # surface,left_id,right_id,cost,headword,reading,dict_form,normalized,
+    # POS1,POS2,POS3,POS4,POS5(empty),POS6(empty),split_a(*),split_b(*),
+    # synonym_group(empty),word_structure(empty)
+    skip_count = 0
+
     for name in sorted(person_names):
-        s = name.replace(",", "")
-        if not s:
+        s = name.replace(",", "").strip()
+        if not s or "\n" in s or "\r" in s:
+            skip_count += 1
             continue
-        rows.append(f"{s},0,0,3000,{s},{s},{s},{s},名詞,固有名詞,人名,一般,,*,*,*,*")
+        rows.append(f"{s},0,0,3000,{s},{s},{s},{s},名詞,固有名詞,人名,一般,,,*,*,,")
     for name in sorted(surnames):
         if len(name) < 2:
             continue
-        s = name.replace(",", "")
-        rows.append(f"{s},0,0,3000,{s},{s},{s},{s},名詞,固有名詞,人名,姓,,*,*,*,*")
+        s = name.replace(",", "").strip()
+        if not s or "\n" in s or "\r" in s:
+            skip_count += 1
+            continue
+        rows.append(f"{s},0,0,3000,{s},{s},{s},{s},名詞,固有名詞,人名,姓,,,*,*,,")
     for name in sorted(given_names):
         if len(name) < 2:
             continue
-        s = name.replace(",", "")
-        rows.append(f"{s},0,0,3000,{s},{s},{s},{s},名詞,固有名詞,人名,名,,*,*,*,*")
+        s = name.replace(",", "").strip()
+        if not s or "\n" in s or "\r" in s:
+            skip_count += 1
+            continue
+        rows.append(f"{s},0,0,3000,{s},{s},{s},{s},名詞,固有名詞,人名,名,,,*,*,,")
+
+    if skip_count:
+        print(f"  {skip_count:,} entries skipped (invalid characters)")
 
     # write_bytes avoids Windows CRLF conversion that would corrupt the last field of each row
     csv_path.write_bytes("\n".join(rows).encode("utf-8"))
