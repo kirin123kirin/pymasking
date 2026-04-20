@@ -72,25 +72,33 @@ def _load_models() -> None:
 def _ocr_lines(image) -> List[Tuple[str, Tuple[int, int, int, int]]]:
     """Run surya OCR; return list of (text, (x1, y1, x2, y2))."""
     _load_models()
-    from surya.ocr import run_ocr
+    lines: List[Tuple[str, Tuple[int, int, int, int]]] = []
 
     if _surya_new_api:
-        results = run_ocr([image], [["ja", "en"]], _det_model, _rec_model)
+        # surya >= 0.6: RecognitionPredictor(foundation_predictor=det) runs full pipeline.
+        # surya.ocr.run_ocr was removed in this version.
+        try:
+            results = _rec_model([image], [["ja", "en"]])
+        except Exception:
+            return lines
+        page = results[0] if isinstance(results, (list, tuple)) and results else results
+        if hasattr(page, "text_lines") and page.text_lines:
+            for line in page.text_lines:
+                if line.text.strip():
+                    b = line.bbox
+                    lines.append((line.text, (int(b[0]), int(b[1]), int(b[2]), int(b[3]))))
     else:
+        from surya.ocr import run_ocr
         results = run_ocr(
-            [image],
-            [["ja", "en"]],
-            _det_model,
-            _det_processor,
-            _rec_model,
-            _rec_processor,
+            [image], [["ja", "en"]],
+            _det_model, _det_processor, _rec_model, _rec_processor,
         )
-    lines: List[Tuple[str, Tuple[int, int, int, int]]] = []
-    if results and results[0].text_lines:
-        for line in results[0].text_lines:
-            if line.text.strip():
-                b = line.bbox  # [x1, y1, x2, y2]
-                lines.append((line.text, (int(b[0]), int(b[1]), int(b[2]), int(b[3]))))
+        if results and results[0].text_lines:
+            for line in results[0].text_lines:
+                if line.text.strip():
+                    b = line.bbox
+                    lines.append((line.text, (int(b[0]), int(b[1]), int(b[2]), int(b[3]))))
+
     return lines
 
 

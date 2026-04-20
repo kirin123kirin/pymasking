@@ -142,6 +142,8 @@ _SURNAMES = [
     "藤原", "服部", "吉川", "土屋", "中山", "菊地", "谷口", "今井", "杉山", "水野",
     "大塚", "河野", "平野", "熊谷", "秋山", "栗原", "三田", "増田", "浜田", "西川",
     "橘", "松岡", "新井", "辻", "和田", "福島", "大石", "原", "斉藤", "千葉",
+    "山上", "田口", "川田", "西田", "東", "北村", "南", "上野", "下田", "高木",
+    "桑田", "大村", "小山", "浅野", "吉野", "桐島", "片山", "村田", "奥田", "堀",
 ]
 _SURNAME_PAT = "|".join(re.escape(s) for s in sorted(_SURNAMES, key=len, reverse=True))
 
@@ -274,10 +276,15 @@ def detect_persons_orgs(text: str) -> List[Detection]:
                 results.append(Detection(ent.start_char, ent.end_char, "人物", ent.text))
             elif ent.label_ in ("ORG", "Organization", "Company"):
                 results.append(Detection(ent.start_char, ent.end_char, "組織", ent.text))
-        # 既知姓パターンも併用して敬称なし名前の検出漏れを補完
+        # 既知姓パターンで補完（姓＋漢字1〜3文字の名）
         pat_d = rf"({_SURNAME_PAT})([\u4E00-\u9FFF]{{1,3}})(?![\u4E00-\u9FFF])"
         for m in re.finditer(pat_d, text):
             results.append(Detection(m.start(), m.end(), "人物", m.group()))
+        # 敬称（さん・様・氏等）直前の語も補完：GiNZA が短文脈で見落とす場合のフォールバック
+        _hon = r"さん|様|氏|君|ちゃん|Mr\.|Ms\.|Mrs\.|Dr\.|Prof\."
+        pat_b_hon = rf"([\u3040-\u9FFF]{{1,6}})(?:{_hon})"
+        for m in re.finditer(pat_b_hon, text):
+            results.append(Detection(m.start(1), m.end(1), "人物", m.group(1)))
         return results
 
     # B: 役職・敬称の直前テキスト

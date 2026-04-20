@@ -19,8 +19,9 @@ if not exist "%PYTHON%" (
     exit /b 1
 )
 
-if not exist "%GINZA_MODEL_PATH%\meta.json" (
-    echo [WARNING] GiNZA model not found: %GINZA_MODEL_PATH%
+"%PYTHON%" -c "import ja_ginza" >nul 2>&1
+if errorlevel 1 (
+    echo [WARNING] GiNZA ^(ja_ginza^) not installed.
     echo          Please run setup_model.bat first.
     echo          Running in fallback mode ^(without GiNZA^).
     echo(
