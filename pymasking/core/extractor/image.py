@@ -33,18 +33,17 @@ def _load_models() -> None:
         from surya.recognition import RecognitionPredictor
         import inspect
         _det_model = DetectionPredictor()
-        # Patch bbox_size if missing from old model checkpoint (surya/issues/492)
+        # Patch attributes missing from older model checkpoints (surya/issues/492)
         if hasattr(_det_model, 'model') and hasattr(_det_model.model, 'config'):
             cfg = _det_model.model.config
             if not hasattr(cfg, 'bbox_size'):
                 cfg.bbox_size = 4
+        if not hasattr(_det_model, 'tasks'):
+            _det_model.tasks = []
         rec_params = inspect.signature(RecognitionPredictor.__init__).parameters
-        try:
-            if "foundation_predictor" in rec_params:
-                _rec_model = RecognitionPredictor(_det_model)
-            else:
-                _rec_model = RecognitionPredictor()
-        except (AttributeError, TypeError):
+        if "foundation_predictor" in rec_params:
+            _rec_model = RecognitionPredictor(_det_model)
+        else:
             _rec_model = RecognitionPredictor()
         _det_processor = None
         _rec_processor = None

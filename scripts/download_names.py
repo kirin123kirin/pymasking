@@ -2,6 +2,7 @@
 
 import gzip
 import importlib.util
+import re
 import subprocess
 import sys
 import urllib.request
@@ -103,6 +104,38 @@ def _find_system_dic() -> Path | None:
     return None
 
 
+def _run_ubuild(system_dic: Path, dic_path: Path, csv_path: Path) -> "str | None":
+    """Run sudachipy ubuild. Returns None on success, captured error text on failure."""
+    cmd = [sys.executable, "-m", "sudachipy", "ubuild",
+           "-s", str(system_dic), "-o", str(dic_path), str(csv_path)]
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=600)
+        if r.returncode == 0:
+            return None
+        return (r.stderr or r.stdout or f"exit {r.returncode}").strip()
+    except Exception:
+        pass
+
+    # Fallback: in-process call (stderr not captured; no row-level retry)
+    try:
+        import sudachipy.command_line as _cl
+        _saved = sys.argv[:]
+        sys.argv = ["sudachipy", "ubuild", "-s", str(system_dic),
+                    "-o", str(dic_path), str(csv_path)]
+        try:
+            _cl.main()
+            return None
+        except SystemExit as e:
+            if e.code in (None, 0):
+                return None
+            return f"exit {e.code}"
+        finally:
+            sys.argv = _saved
+    except Exception as e:
+        return str(e)
+
+
 def _build_sudachi_dict(surnames: set[str], given_names: set[str], person_names: set[str]) -> None:
     """Build Sudachi binary user dictionary from name data."""
     system_dic = _find_system_dic()
@@ -112,18 +145,18 @@ def _build_sudachi_dict(surnames: set[str], given_names: set[str], person_names:
 
     csv_path = DATA_DIR / "_names_user_tmp.csv"
     dic_path = DATA_DIR / "names_user.dic"
-    rows: list[str] = []
 
-    # 18-column sudachipy ubuild format:
+    # 18-column sudachipy ubuild format (indices 0-17):
     # surface,left_id,right_id,cost,headword,reading,dict_form,normalized,
     # POS1,POS2,POS3,POS4,POS5(empty),POS6(empty),split_a(*),split_b(*),
     # synonym_group(empty),word_structure(empty)
-    skip_count = 0
+    skip_pre = 0
+    rows: list[str] = []
 
     for name in sorted(person_names):
         s = name.replace(",", "").strip()
         if not s or "\n" in s or "\r" in s:
-            skip_count += 1
+            skip_pre += 1
             continue
         rows.append(f"{s},0,0,3000,{s},{s},{s},{s},名詞,固有名詞,人名,一般,,,*,*,,")
     for name in sorted(surnames):
@@ -131,7 +164,7 @@ def _build_sudachi_dict(surnames: set[str], given_names: set[str], person_names:
             continue
         s = name.replace(",", "").strip()
         if not s or "\n" in s or "\r" in s:
-            skip_count += 1
+            skip_pre += 1
             continue
         rows.append(f"{s},0,0,3000,{s},{s},{s},{s},名詞,固有名詞,人名,姓,,,*,*,,")
     for name in sorted(given_names):
@@ -139,34 +172,46 @@ def _build_sudachi_dict(surnames: set[str], given_names: set[str], person_names:
             continue
         s = name.replace(",", "").strip()
         if not s or "\n" in s or "\r" in s:
-            skip_count += 1
+            skip_pre += 1
             continue
         rows.append(f"{s},0,0,3000,{s},{s},{s},{s},名詞,固有名詞,人名,名,,,*,*,,")
 
-    if skip_count:
-        print(f"  {skip_count:,} entries skipped (invalid characters)")
-
-    # write_bytes avoids Windows CRLF conversion that would corrupt the last field of each row
-    csv_path.write_bytes("\n".join(rows).encode("utf-8"))
     print(f"  Building Sudachi user dict ({len(rows):,} entries)...")
+    if skip_pre:
+        print(f"  {skip_pre:,} entries skipped (invalid characters)")
+
+    skip_build = 0
+    max_skip = 200
 
     try:
-        import sudachipy.command_line as _cl
-        _saved = sys.argv[:]
-        sys.argv = ["sudachipy", "ubuild", "-s", str(system_dic), "-o", str(dic_path), str(csv_path)]
-        try:
-            _cl.main()
-        finally:
-            sys.argv = _saved
-    except SystemExit as e:
-        if e.code not in (None, 0):
-            print(f"  [WARNING] Sudachi dict build failed (exit {e.code})")
-            return
-    except Exception as e:
-        print(f"  [WARNING] Sudachi dict build failed: {e}")
-        return
+        while rows:
+            # write_bytes avoids Windows CRLF corruption of the last CSV field
+            csv_path.write_bytes("\n".join(rows).encode("utf-8"))
+            error = _run_ubuild(system_dic, dic_path, csv_path)
+
+            if error is None:
+                break  # success
+
+            # Parse 1-indexed line number from: "filename:N  message"
+            m = re.search(r":(\d+)\s", error)
+            if not m or skip_build >= max_skip:
+                print(f"  [WARNING] Sudachi dict build failed: {error[:300]}")
+                break
+
+            bad = int(m.group(1)) - 1  # convert to 0-indexed
+            if not (0 <= bad < len(rows)):
+                print(f"  [WARNING] Sudachi dict build failed: {error[:300]}")
+                break
+
+            rows.pop(bad)
+            skip_build += 1
     finally:
         csv_path.unlink(missing_ok=True)
+
+    total_skipped = skip_pre + skip_build
+    if total_skipped:
+        print(f"  Skipped {total_skipped:,} entries total "
+              f"(pre-filter: {skip_pre:,}, build errors: {skip_build:,})")
 
     if dic_path.exists():
         print(f"  names_user.dic: {dic_path.stat().st_size / 1024:.0f} KB")

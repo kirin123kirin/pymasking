@@ -19,17 +19,16 @@ try:
     from surya.recognition import RecognitionPredictor
     print("  Loading detection predictor...")
     det = DetectionPredictor()
-    # Patch bbox_size if missing from old model checkpoint (surya/issues/492)
+    # Patch attributes missing from older model checkpoints (surya/issues/492)
     if hasattr(det, 'model') and hasattr(det.model, 'config') and not hasattr(det.model.config, 'bbox_size'):
         det.model.config.bbox_size = 4
+    if not hasattr(det, 'tasks'):
+        det.tasks = []
     print("  Loading recognition predictor...")
     rec_params = inspect.signature(RecognitionPredictor.__init__).parameters
-    try:
-        if "foundation_predictor" in rec_params:
-            RecognitionPredictor(det)
-        else:
-            RecognitionPredictor()
-    except (AttributeError, TypeError):
+    if "foundation_predictor" in rec_params:
+        RecognitionPredictor(det)
+    else:
         RecognitionPredictor()
 except ImportError:
     # surya < 0.6: model/processor API
