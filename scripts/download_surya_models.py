@@ -27,9 +27,32 @@ try:
     print("  Loading recognition predictor...")
     rec_params = inspect.signature(RecognitionPredictor.__init__).parameters
     if "foundation_predictor" in rec_params:
-        RecognitionPredictor(det)
+        rec = RecognitionPredictor(det)
     else:
-        RecognitionPredictor()
+        rec = RecognitionPredictor()
+
+    # Newer surya may download model weights lazily (only on first inference).
+    # Force the download now by accessing rec.model, then fallback to a dummy call.
+    print("  Ensuring recognition model weights are downloaded...")
+    _forced = False
+    try:
+        m = rec.model  # triggers @cached_property / lazy download
+        if m is not None:
+            _forced = True
+    except Exception:
+        pass
+
+    if not _forced:
+        try:
+            from PIL import Image
+            dummy = Image.new("RGB", (64, 32), color=(255, 255, 255))
+            try:
+                rec([dummy], [["ja"]])
+            except Exception:
+                from surya.ocr import run_ocr
+                run_ocr([dummy], [["ja"]], det, rec)
+        except Exception as e:
+            print(f"  [WARNING] Could not force recognition download: {e}")
 except ImportError:
     # surya < 0.6: model/processor API
     try:
