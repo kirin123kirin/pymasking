@@ -32,27 +32,49 @@ try:
         rec = RecognitionPredictor()
 
     # Newer surya may download model weights lazily (only on first inference).
-    # Force the download now by accessing rec.model, then fallback to a dummy call.
+    # Force the download now: try model attribute access, then a dummy inference call.
+    # Note: surya >= 0.6 removed surya.ocr; use predictor directly.
     print("  Ensuring recognition model weights are downloaded...")
     _forced = False
-    try:
-        m = rec.model  # triggers @cached_property / lazy download
-        if m is not None:
-            _forced = True
-    except Exception:
-        pass
+
+    # Try various attribute names for the underlying model object
+    for _attr in ("model", "recognition_model", "_model"):
+        try:
+            m = getattr(rec, _attr, None)
+            if m is not None:
+                _forced = True
+                break
+        except Exception:
+            pass
 
     if not _forced:
         try:
             from PIL import Image
             dummy = Image.new("RGB", (64, 32), color=(255, 255, 255))
+            # Call predictor directly (surya >= 0.6 API; surya.ocr removed)
             try:
                 rec([dummy], [["ja"]])
+                _forced = True
             except Exception:
-                from surya.ocr import run_ocr
-                run_ocr([dummy], [["ja"]], det, rec)
+                pass
+            # If still not forced, try the full OCR pipeline via det + rec
+            if not _forced:
+                try:
+                    det_result = det([dummy])
+                    if det_result and det_result[0].bboxes:
+                        from PIL import Image as _PIL
+                        crops = [dummy.crop(tuple(int(v) for v in b.bbox))
+                                 for b in det_result[0].bboxes[:1]]
+                        rec(crops, [["ja"]])
+                    _forced = True
+                except Exception:
+                    pass
         except Exception as e:
             print(f"  [WARNING] Could not force recognition download: {e}")
+
+    if not _forced:
+        print("  [WARNING] Recognition model download could not be verified; "
+              "it will be downloaded on first use.")
 except ImportError:
     # surya < 0.6: model/processor API
     try:
