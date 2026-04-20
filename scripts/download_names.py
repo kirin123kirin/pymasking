@@ -105,7 +105,7 @@ def _find_system_dic() -> Path | None:
 
 
 def _run_ubuild(system_dic: Path, dic_path: Path, csv_path: Path) -> "str | None":
-    """Run sudachipy ubuild. Returns None on success, captured error text on failure."""
+    """Run sudachipy ubuild. Returns None on success, error text on failure."""
     cmd = [sys.executable, "-m", "sudachipy", "ubuild",
            "-s", str(system_dic), "-o", str(dic_path), str(csv_path)]
     try:
@@ -113,11 +113,16 @@ def _run_ubuild(system_dic: Path, dic_path: Path, csv_path: Path) -> "str | None
                            encoding="utf-8", errors="replace", timeout=600)
         if r.returncode == 0:
             return None
-        return (r.stderr or r.stdout or f"exit {r.returncode}").strip()
+        err = (r.stderr or r.stdout or "").strip()
+        # Use subprocess result only when it contains a line reference (real ubuild error).
+        # If it's an import/setup error (e.g. "No module named sudachipy.__main__"),
+        # fall through to the in-process call below.
+        if re.search(r":\d+\s", err):
+            return err
     except Exception:
         pass
 
-    # Fallback: in-process call (stderr not captured; no row-level retry)
+    # In-process fallback (stderr goes to console; no row-level retry possible)
     try:
         import sudachipy.command_line as _cl
         _saved = sys.argv[:]
