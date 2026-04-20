@@ -94,14 +94,59 @@ def _find_system_dic() -> Path | None:
     for pkg in ("sudachidict_full", "sudachidict_core", "sudachidict_small"):
         try:
             spec = importlib.util.find_spec(pkg)
-            if spec and spec.submodule_search_locations:
-                for loc in spec.submodule_search_locations:
+            if spec:
+                # Try submodule_search_locations (package directory)
+                for loc in (spec.submodule_search_locations or []):
                     p = Path(loc) / "resources" / "system.dic"
+                    if p.exists():
+                        return p
+                # Try origin (__init__.py parent)
+                if spec.origin:
+                    p = Path(spec.origin).parent / "resources" / "system.dic"
                     if p.exists():
                         return p
         except Exception:
             pass
+
+    # Fallback: scan sys.path for the package directories
+    import sys
+    for site_dir in sys.path:
+        for pkg in ("sudachidict_full", "sudachidict_core", "sudachidict_small"):
+            p = Path(site_dir) / pkg / "resources" / "system.dic"
+            if p.exists():
+                return p
     return None
+
+
+def _update_sudachi_json(dic_path: Path) -> None:
+    """Register names_user.dic in sudachipy's resources/sudachi.json.
+
+    This is the config file sudachipy (and GiNZA) actually reads at runtime.
+    SUDACHI_SETTINGS_PATH is unreliable with GiNZA, so we edit the file directly.
+    """
+    import json
+    try:
+        import sudachipy
+        config_path = Path(sudachipy.__file__).parent / "resources" / "sudachi.json"
+        if not config_path.exists():
+            print(f"  [WARNING] sudachi.json not found: {config_path}")
+            return
+
+        cfg = json.loads(config_path.read_text(encoding="utf-8"))
+        dic_str = dic_path.as_posix()  # forward slashes work on Windows too
+
+        existing = cfg.get("userDict", [])
+        # Replace any stale path pointing to names_user.dic
+        existing = [p for p in existing
+                    if not p.replace("\\", "/").endswith("/data/names_user.dic")]
+        existing.append(dic_str)
+        cfg["userDict"] = existing
+
+        config_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2),
+                               encoding="utf-8")
+        print(f"  sudachi.json updated -> userDict: {dic_str}")
+    except Exception as e:
+        print(f"  [WARNING] Could not update sudachi.json: {e}")
 
 
 def _run_ubuild(system_dic: Path, dic_path: Path, csv_path: Path) -> "str | None":
@@ -228,6 +273,11 @@ def save(surnames: set[str], given_names: set[str], person_names: set[str]) -> N
     DATA_DIR.mkdir(exist_ok=True)
     print("Saving name data...")
     _build_sudachi_dict(surnames, given_names, person_names)
+
+    # Register the built dic in sudachipy's sudachi.json so GiNZA loads it at runtime
+    dic_path = DATA_DIR / "names_user.dic"
+    if dic_path.exists():
+        _update_sudachi_json(dic_path)
 
     for fname in ("surnames.txt", "given_names.txt", "person_names.txt", "names_patterns.pkl.gz"):
         p = DATA_DIR / fname
