@@ -1,11 +1,14 @@
 """画像ファイルの視覚的マスキング処理（surya-ocr で検出 → 黒塗り）。"""
 
+import logging
 import os
 from pathlib import Path
 from typing import List, Tuple
 
 from ..detector import detect_all, resolve_overlaps
 from . import make_output_path
+
+_log = logging.getLogger(__name__)
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 _HF_CACHE = _REPO_ROOT / "data" / "models" / "hf_cache"
@@ -48,6 +51,8 @@ def _load_models() -> None:
         _det_processor = None
         _rec_processor = None
         _surya_new_api = True
+        _log.info("[surya] new API loaded (det=%s, rec=%s)", type(_det_model).__name__, type(_rec_model).__name__)
+        print(f"[surya] new API loaded det={type(_det_model).__name__} rec={type(_rec_model).__name__}", flush=True)
         return
     except ImportError:
         pass
@@ -80,7 +85,11 @@ def _ocr_lines(image) -> List[Tuple[str, Tuple[int, int, int, int]]]:
 
         # Step 1: detect text line bboxes
         det_results = _det_model([image])
-        if not det_results or not getattr(det_results[0], "bboxes", None):
+        n_bboxes = len(det_results[0].bboxes) if det_results and getattr(det_results[0], "bboxes", None) else 0
+        _log.info("[surya] detection: %d bbox(es) found", n_bboxes)
+        print(f"[surya] detection: {n_bboxes} bbox(es) found", flush=True)
+
+        if not det_results or not n_bboxes:
             return lines
 
         # Step 2: crop each detected region
@@ -88,16 +97,30 @@ def _ocr_lines(image) -> List[Tuple[str, Tuple[int, int, int, int]]]:
         coords: List[Tuple[int, int, int, int]] = []
         for bbox_obj in det_results[0].bboxes:
             b = bbox_obj.bbox  # [x1, y1, x2, y2]
-            x1, y1, x2, y2 = int(b[0]), int(b[1]), int(b[2]), int(b[3])
+            try:
+                x1, y1, x2, y2 = int(b[0]), int(b[1]), int(b[2]), int(b[3])
+            except (TypeError, ValueError) as e:
+                _log.warning("[surya] bad bbox %r: %s", b, e)
+                print(f"[surya] bad bbox {b!r}: {e}", flush=True)
+                continue
             if x2 > x1 and y2 > y1:
                 crops.append(image.crop((x1, y1, x2, y2)))
                 coords.append((x1, y1, x2, y2))
 
+        _log.info("[surya] %d valid crop(s)", len(crops))
+        print(f"[surya] {len(crops)} valid crop(s)", flush=True)
         if not crops:
             return lines
 
         # Step 3: recognise text in each crop (one lang list per crop)
         rec_results = _rec_model(crops, [["ja", "en"]] * len(crops))
+
+        # Log first result structure to help diagnose API shape
+        if rec_results:
+            r0 = rec_results[0]
+            attrs = [a for a in dir(r0) if not a.startswith("_")]
+            _log.info("[surya] rec result[0] type=%s attrs=%s", type(r0).__name__, attrs)
+            print(f"[surya] rec result[0] type={type(r0).__name__} attrs={attrs}", flush=True)
 
         # Step 4: pair text with original bbox coordinates
         for bbox, rec in zip(coords, rec_results):
@@ -106,8 +129,16 @@ def _ocr_lines(image) -> List[Tuple[str, Tuple[int, int, int, int]]]:
                 text = rec.text or ""
             elif hasattr(rec, "text_lines") and rec.text_lines:
                 text = " ".join(tl.text for tl in rec.text_lines if tl.text)
+            # last resort: try string conversion
+            if not text and hasattr(rec, "__str__"):
+                candidate = str(rec).strip()
+                if len(candidate) < 500:  # sanity check
+                    text = candidate
             if text.strip():
                 lines.append((text, bbox))
+
+        _log.info("[surya] %d line(s) extracted", len(lines))
+        print(f"[surya] {len(lines)} line(s) extracted", flush=True)
     else:
         from surya.ocr import run_ocr
         results = run_ocr(
