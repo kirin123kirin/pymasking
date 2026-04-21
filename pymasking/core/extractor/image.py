@@ -85,11 +85,25 @@ def _ocr_lines(image) -> List[Tuple[str, Tuple[int, int, int, int]]]:
 
         # Step 1: detect text line bboxes
         det_results = _det_model([image])
-        n_bboxes = len(det_results[0].bboxes) if det_results and getattr(det_results[0], "bboxes", None) else 0
-        _log.info("[surya] detection: %d bbox(es) found", n_bboxes)
-        print(f"[surya] detection: {n_bboxes} bbox(es) found", flush=True)
 
-        if not det_results or not n_bboxes:
+        # Diagnose result structure regardless of bboxes count
+        if det_results:
+            r0 = det_results[0]
+            all_attrs = [a for a in dir(r0) if not a.startswith("_")]
+            print(f"[surya] det result[0] type={type(r0).__name__} attrs={all_attrs}", flush=True)
+            # Try common attribute names for bbox list
+            for attr in ("bboxes", "text_lines", "lines", "detections", "polygons"):
+                val = getattr(r0, attr, None)
+                if val is not None:
+                    print(f"[surya]   .{attr} = {type(val).__name__}(len={len(val) if hasattr(val,'__len__') else '?'})", flush=True)
+        else:
+            print("[surya] det_results is empty/None", flush=True)
+            return lines
+
+        n_bboxes = len(det_results[0].bboxes) if getattr(det_results[0], "bboxes", None) else 0
+        print(f"[surya] detection: {n_bboxes} bbox(es) found  image_size={image.size}", flush=True)
+
+        if not n_bboxes:
             return lines
 
         # Step 2: crop each detected region
