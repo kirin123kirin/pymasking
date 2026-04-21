@@ -24,7 +24,7 @@ def _ensure_hf_home() -> None:
 
 def _load_models() -> None:
     global _det_model, _det_processor, _rec_model, _rec_processor, _surya_new_api
-    if _det_model is not None:
+    if _det_model is not None and _surya_new_api is not None:
         return
     _ensure_hf_home()
     # surya >= 0.6: predictor-based API
@@ -75,18 +75,39 @@ def _ocr_lines(image) -> List[Tuple[str, Tuple[int, int, int, int]]]:
     lines: List[Tuple[str, Tuple[int, int, int, int]]] = []
 
     if _surya_new_api:
-        # surya >= 0.6: RecognitionPredictor(foundation_predictor=det) runs full pipeline.
-        # surya.ocr.run_ocr was removed in this version.
-        try:
-            results = _rec_model([image], [["ja", "en"]])
-        except Exception:
+        # surya >= 0.6: separate detection → crop → recognition pipeline.
+        # RecognitionPredictor takes individual text-line crops, NOT full-page images.
+
+        # Step 1: detect text line bboxes
+        det_results = _det_model([image])
+        if not det_results or not getattr(det_results[0], "bboxes", None):
             return lines
-        page = results[0] if isinstance(results, (list, tuple)) and results else results
-        if hasattr(page, "text_lines") and page.text_lines:
-            for line in page.text_lines:
-                if line.text.strip():
-                    b = line.bbox
-                    lines.append((line.text, (int(b[0]), int(b[1]), int(b[2]), int(b[3]))))
+
+        # Step 2: crop each detected region
+        crops: List = []
+        coords: List[Tuple[int, int, int, int]] = []
+        for bbox_obj in det_results[0].bboxes:
+            b = bbox_obj.bbox  # [x1, y1, x2, y2]
+            x1, y1, x2, y2 = int(b[0]), int(b[1]), int(b[2]), int(b[3])
+            if x2 > x1 and y2 > y1:
+                crops.append(image.crop((x1, y1, x2, y2)))
+                coords.append((x1, y1, x2, y2))
+
+        if not crops:
+            return lines
+
+        # Step 3: recognise text in each crop (one lang list per crop)
+        rec_results = _rec_model(crops, [["ja", "en"]] * len(crops))
+
+        # Step 4: pair text with original bbox coordinates
+        for bbox, rec in zip(coords, rec_results):
+            text = ""
+            if hasattr(rec, "text"):
+                text = rec.text or ""
+            elif hasattr(rec, "text_lines") and rec.text_lines:
+                text = " ".join(tl.text for tl in rec.text_lines if tl.text)
+            if text.strip():
+                lines.append((text, bbox))
     else:
         from surya.ocr import run_ocr
         results = run_ocr(
