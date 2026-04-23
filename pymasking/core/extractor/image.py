@@ -86,16 +86,19 @@ def _ocr_lines(image) -> List[Tuple[str, Tuple[int, int, int, int]]]:
         # Step 1: detect text line bboxes
         det_results = _det_model([image])
 
-        # Diagnose result structure regardless of bboxes count
+        # Diagnose result structure and heatmap values
         if det_results:
             r0 = det_results[0]
-            all_attrs = [a for a in dir(r0) if not a.startswith("_")]
-            print(f"[surya] det result[0] type={type(r0).__name__} attrs={all_attrs}", flush=True)
-            # Try common attribute names for bbox list
-            for attr in ("bboxes", "text_lines", "lines", "detections", "polygons"):
-                val = getattr(r0, attr, None)
-                if val is not None:
-                    print(f"[surya]   .{attr} = {type(val).__name__}(len={len(val) if hasattr(val,'__len__') else '?'})", flush=True)
+            # Heatmap stats — tells us if the model is actually running inference
+            for hm_attr in ("heatmap", "affinity_map"):
+                hm = getattr(r0, hm_attr, None)
+                if hm is not None:
+                    try:
+                        import numpy as np
+                        arr = np.array(hm)
+                        print(f"[surya] {hm_attr}: shape={arr.shape} min={arr.min():.4f} max={arr.max():.4f} mean={arr.mean():.4f}", flush=True)
+                    except Exception as e:
+                        print(f"[surya] {hm_attr}: type={type(hm).__name__} (stats error: {e})", flush=True)
         else:
             print("[surya] det_results is empty/None", flush=True)
             return lines
