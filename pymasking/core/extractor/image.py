@@ -25,6 +25,41 @@ def _ensure_hf_home() -> None:
     os.environ.setdefault("MODEL_CACHE_DIR", str(_HF_CACHE))
 
 
+def _apply_surya_compat_patches() -> None:
+    """Monkey-patches for surya/transformers version mismatches."""
+    import torch
+
+    # 1. SuryaDecoderConfig missing pad_token_id: newer transformers raises
+    #    AttributeError for absent config keys instead of returning None.
+    try:
+        from surya.common.surya.decoder.config import SuryaDecoderConfig
+        if not hasattr(SuryaDecoderConfig, 'pad_token_id'):
+            SuryaDecoderConfig.pad_token_id = 0
+    except Exception:
+        pass
+
+    # 2. ROPE_INIT_FUNCTIONS missing "default": newer transformers removed the
+    #    standard no-scaling RoPE entry; surya's Qwen2RotaryEmbedding uses it.
+    try:
+        from transformers.modeling_rope_utils import ROPE_INIT_FUNCTIONS
+        if "default" not in ROPE_INIT_FUNCTIONS:
+            def _rope_default(config, device=None, seq_len=None, **kwargs):
+                head_dim = getattr(
+                    config, 'head_dim',
+                    config.hidden_size // config.num_attention_heads,
+                )
+                base = float(getattr(config, 'rope_theta', 10000.0))
+                inv_freq = 1.0 / (
+                    base ** (torch.arange(0, head_dim, 2, dtype=torch.float32) / head_dim)
+                )
+                if device is not None:
+                    inv_freq = inv_freq.to(device)
+                return inv_freq, 1.0
+            ROPE_INIT_FUNCTIONS["default"] = _rope_default
+    except Exception:
+        pass
+
+
 def _load_models() -> None:
     global _det_model, _det_processor, _rec_model, _rec_processor, _surya_new_api
     if _det_model is not None and _surya_new_api is not None:
@@ -44,14 +79,7 @@ def _load_models() -> None:
 
         # RecognitionPredictor requires FoundationPredictor (not DetectionPredictor).
         # Passing DetectionPredictor caused processor.image_processor AttributeError.
-        # Monkey-patch: checkpoint config JSON omits pad_token_id; newer transformers
-        # raises AttributeError instead of returning None (surya/issues/pad_token_id).
-        try:
-            from surya.common.surya.decoder import SuryaDecoderConfig
-            if not hasattr(SuryaDecoderConfig, 'pad_token_id'):
-                SuryaDecoderConfig.pad_token_id = 0
-        except Exception:
-            pass
+        _apply_surya_compat_patches()
         try:
             from surya.foundation import FoundationPredictor
             _rec_model = RecognitionPredictor(FoundationPredictor())

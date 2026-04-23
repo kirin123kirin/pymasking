@@ -13,6 +13,42 @@ os.environ.setdefault("MODEL_CACHE_DIR", str(HF_CACHE))
 print(f"Downloading surya-ocr models to: {HF_CACHE}")
 print("This may take several minutes on first run (~500MB)...")
 
+
+def _apply_surya_compat_patches() -> None:
+    """Monkey-patches for surya/transformers version mismatches."""
+    import torch
+
+    # 1. SuryaDecoderConfig missing pad_token_id: newer transformers raises
+    #    AttributeError for absent config keys instead of returning None.
+    try:
+        from surya.common.surya.decoder.config import SuryaDecoderConfig
+        if not hasattr(SuryaDecoderConfig, 'pad_token_id'):
+            SuryaDecoderConfig.pad_token_id = 0
+    except Exception:
+        pass
+
+    # 2. ROPE_INIT_FUNCTIONS missing "default": newer transformers removed the
+    #    standard no-scaling RoPE entry; surya's Qwen2RotaryEmbedding uses it.
+    try:
+        from transformers.modeling_rope_utils import ROPE_INIT_FUNCTIONS
+        if "default" not in ROPE_INIT_FUNCTIONS:
+            def _rope_default(config, device=None, seq_len=None, **kwargs):
+                head_dim = getattr(
+                    config, 'head_dim',
+                    config.hidden_size // config.num_attention_heads,
+                )
+                base = float(getattr(config, 'rope_theta', 10000.0))
+                inv_freq = 1.0 / (
+                    base ** (torch.arange(0, head_dim, 2, dtype=torch.float32) / head_dim)
+                )
+                if device is not None:
+                    inv_freq = inv_freq.to(device)
+                return inv_freq, 1.0
+            ROPE_INIT_FUNCTIONS["default"] = _rope_default
+    except Exception:
+        pass
+
+
 try:
     # surya >= 0.6: predictor-based API
     from surya.detection import DetectionPredictor
@@ -26,14 +62,7 @@ try:
     # RecognitionPredictor requires FoundationPredictor, NOT DetectionPredictor.
     # Passing DetectionPredictor caused processor.image_processor AttributeError at inference.
     print("  Loading recognition predictor (via FoundationPredictor)...")
-    # Monkey-patch: checkpoint config JSON omits pad_token_id; newer transformers
-    # raises AttributeError instead of returning None (surya/issues/pad_token_id).
-    try:
-        from surya.common.surya.decoder import SuryaDecoderConfig
-        if not hasattr(SuryaDecoderConfig, 'pad_token_id'):
-            SuryaDecoderConfig.pad_token_id = 0
-    except Exception:
-        pass
+    _apply_surya_compat_patches()
     try:
         from surya.foundation import FoundationPredictor
         rec = RecognitionPredictor(FoundationPredictor())
