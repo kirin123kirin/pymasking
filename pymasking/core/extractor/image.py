@@ -80,81 +80,33 @@ def _ocr_lines(image) -> List[Tuple[str, Tuple[int, int, int, int]]]:
     lines: List[Tuple[str, Tuple[int, int, int, int]]] = []
 
     if _surya_new_api:
-        # surya >= 0.6: separate detection → crop → recognition pipeline.
-        # RecognitionPredictor takes individual text-line crops, NOT full-page images.
+        # surya >= 0.6 API:
+        #   DetectionPredictor([image])  → TextDetectionResult with .bboxes (PolygonBox list)
+        #   RecognitionPredictor([image], langs, bboxes=[[x1,y1,x2,y2],...])
+        #       → List[OCRResult], each with .text_lines (TextLine list)
 
         # Step 1: detect text line bboxes
         det_results = _det_model([image])
-
-        # Diagnose result structure and heatmap values
-        if det_results:
-            r0 = det_results[0]
-            # Heatmap stats — tells us if the model is actually running inference
-            for hm_attr in ("heatmap", "affinity_map"):
-                hm = getattr(r0, hm_attr, None)
-                if hm is not None:
-                    try:
-                        import numpy as np
-                        arr = np.array(hm)
-                        print(f"[surya] {hm_attr}: shape={arr.shape} min={arr.min():.4f} max={arr.max():.4f} mean={arr.mean():.4f}", flush=True)
-                    except Exception as e:
-                        print(f"[surya] {hm_attr}: type={type(hm).__name__} (stats error: {e})", flush=True)
-        else:
-            print("[surya] det_results is empty/None", flush=True)
+        if not det_results or not getattr(det_results[0], "bboxes", None):
+            print(f"[surya] detection: 0 bboxes  image_size={image.size}", flush=True)
             return lines
 
-        n_bboxes = len(det_results[0].bboxes) if getattr(det_results[0], "bboxes", None) else 0
-        print(f"[surya] detection: {n_bboxes} bbox(es) found  image_size={image.size}", flush=True)
+        raw_bboxes = det_results[0].bboxes
+        n_bboxes = len(raw_bboxes)
+        print(f"[surya] detection: {n_bboxes} bbox(es)  image_size={image.size}", flush=True)
 
-        if not n_bboxes:
-            return lines
+        # Step 2: recognise text (pass full image + pre-computed bboxes)
+        # bboxes format: List[List[List[int]]] — one list of boxes per image
+        bbox_coords = [list(b.bbox) for b in raw_bboxes]  # [[x1,y1,x2,y2], ...]
+        rec_results = _rec_model([image], [["ja", "en"]], bboxes=[bbox_coords])
 
-        # Step 2: crop each detected region
-        crops: List = []
-        coords: List[Tuple[int, int, int, int]] = []
-        for bbox_obj in det_results[0].bboxes:
-            b = bbox_obj.bbox  # [x1, y1, x2, y2]
-            try:
-                x1, y1, x2, y2 = int(b[0]), int(b[1]), int(b[2]), int(b[3])
-            except (TypeError, ValueError) as e:
-                _log.warning("[surya] bad bbox %r: %s", b, e)
-                print(f"[surya] bad bbox {b!r}: {e}", flush=True)
-                continue
-            if x2 > x1 and y2 > y1:
-                crops.append(image.crop((x1, y1, x2, y2)))
-                coords.append((x1, y1, x2, y2))
+        # Step 3: extract text from OCRResult.text_lines
+        if rec_results and getattr(rec_results[0], "text_lines", None):
+            for line in rec_results[0].text_lines:
+                if line.text.strip():
+                    b = line.bbox  # PolygonBox computed property → [x1,y1,x2,y2]
+                    lines.append((line.text, (int(b[0]), int(b[1]), int(b[2]), int(b[3]))))
 
-        _log.info("[surya] %d valid crop(s)", len(crops))
-        print(f"[surya] {len(crops)} valid crop(s)", flush=True)
-        if not crops:
-            return lines
-
-        # Step 3: recognise text in each crop (one lang list per crop)
-        rec_results = _rec_model(crops, [["ja", "en"]] * len(crops))
-
-        # Log first result structure to help diagnose API shape
-        if rec_results:
-            r0 = rec_results[0]
-            attrs = [a for a in dir(r0) if not a.startswith("_")]
-            _log.info("[surya] rec result[0] type=%s attrs=%s", type(r0).__name__, attrs)
-            print(f"[surya] rec result[0] type={type(r0).__name__} attrs={attrs}", flush=True)
-
-        # Step 4: pair text with original bbox coordinates
-        for bbox, rec in zip(coords, rec_results):
-            text = ""
-            if hasattr(rec, "text"):
-                text = rec.text or ""
-            elif hasattr(rec, "text_lines") and rec.text_lines:
-                text = " ".join(tl.text for tl in rec.text_lines if tl.text)
-            # last resort: try string conversion
-            if not text and hasattr(rec, "__str__"):
-                candidate = str(rec).strip()
-                if len(candidate) < 500:  # sanity check
-                    text = candidate
-            if text.strip():
-                lines.append((text, bbox))
-
-        _log.info("[surya] %d line(s) extracted", len(lines))
         print(f"[surya] {len(lines)} line(s) extracted", flush=True)
     else:
         from surya.ocr import run_ocr
