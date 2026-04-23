@@ -26,6 +26,14 @@ try:
     # RecognitionPredictor requires FoundationPredictor, NOT DetectionPredictor.
     # Passing DetectionPredictor caused processor.image_processor AttributeError at inference.
     print("  Loading recognition predictor (via FoundationPredictor)...")
+    # Monkey-patch: checkpoint config JSON omits pad_token_id; newer transformers
+    # raises AttributeError instead of returning None (surya/issues/pad_token_id).
+    try:
+        from surya.common.surya.decoder import SuryaDecoderConfig
+        if not hasattr(SuryaDecoderConfig, 'pad_token_id'):
+            SuryaDecoderConfig.pad_token_id = 0
+    except Exception:
+        pass
     try:
         from surya.foundation import FoundationPredictor
         rec = RecognitionPredictor(FoundationPredictor())
