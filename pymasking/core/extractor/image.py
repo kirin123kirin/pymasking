@@ -34,24 +34,26 @@ def _load_models() -> None:
     try:
         from surya.detection import DetectionPredictor
         from surya.recognition import RecognitionPredictor
-        import inspect
+
         _det_model = DetectionPredictor()
         # Patch attributes missing from older model checkpoints (surya/issues/492)
         if hasattr(_det_model, 'model') and hasattr(_det_model.model, 'config'):
             cfg = _det_model.model.config
             if not hasattr(cfg, 'bbox_size'):
                 cfg.bbox_size = 4
-        if not hasattr(_det_model, 'tasks'):
-            _det_model.tasks = []
-        rec_params = inspect.signature(RecognitionPredictor.__init__).parameters
-        if "foundation_predictor" in rec_params:
-            _rec_model = RecognitionPredictor(_det_model)
-        else:
+
+        # RecognitionPredictor requires FoundationPredictor (not DetectionPredictor).
+        # Passing DetectionPredictor caused processor.image_processor AttributeError.
+        try:
+            from surya.foundation import FoundationPredictor
+            _rec_model = RecognitionPredictor(FoundationPredictor())
+        except (ImportError, TypeError):
+            # Older surya without FoundationPredictor
             _rec_model = RecognitionPredictor()
+
         _det_processor = None
         _rec_processor = None
         _surya_new_api = True
-        _log.info("[surya] new API loaded (det=%s, rec=%s)", type(_det_model).__name__, type(_rec_model).__name__)
         print(f"[surya] new API loaded det={type(_det_model).__name__} rec={type(_rec_model).__name__}", flush=True)
         return
     except ImportError:

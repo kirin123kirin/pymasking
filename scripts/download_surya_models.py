@@ -22,13 +22,14 @@ try:
     # Patch attributes missing from older model checkpoints (surya/issues/492)
     if hasattr(det, 'model') and hasattr(det.model, 'config') and not hasattr(det.model.config, 'bbox_size'):
         det.model.config.bbox_size = 4
-    if not hasattr(det, 'tasks'):
-        det.tasks = []
-    print("  Loading recognition predictor...")
-    rec_params = inspect.signature(RecognitionPredictor.__init__).parameters
-    if "foundation_predictor" in rec_params:
-        rec = RecognitionPredictor(det)
-    else:
+
+    # RecognitionPredictor requires FoundationPredictor, NOT DetectionPredictor.
+    # Passing DetectionPredictor caused processor.image_processor AttributeError at inference.
+    print("  Loading recognition predictor (via FoundationPredictor)...")
+    try:
+        from surya.foundation import FoundationPredictor
+        rec = RecognitionPredictor(FoundationPredictor())
+    except (ImportError, TypeError):
         rec = RecognitionPredictor()
 
     # Newer surya may download model weights lazily (only on first inference).
