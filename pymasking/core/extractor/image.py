@@ -189,24 +189,23 @@ def _load_models() -> None:
 
 
 def _split_into_text_rows(image) -> List:
-    """Find text-row bboxes via horizontal pixel-intensity projection.
+    """Find text-row bboxes via pixel-intensity projection.
 
-    Scans each row for dark pixels (ink).  Consecutive dark rows form one text
-    line; gaps between them are the inter-line whitespace.  This is simple but
-    extremely reliable for clean documents with light backgrounds.
+    1. Scan rows for dark pixels (ink) → detect text-line y-ranges.
+    2. Within each line, scan columns for ink → detect tight x-range.
 
-    Returns [[x1, y1, x2, y2], ...] in original image pixel coords.
+    Returns [[x1, y1, x2, y2], ...] in original image pixel coords, trimmed to
+    actual text bounds so the recognition model sees minimal whitespace padding.
     """
     import numpy as np
     gray = np.asarray(image.convert("L"))
     h, w = gray.shape
 
-    # Use the MINIMUM pixel value per row: a row containing any dark ink will
-    # have min < threshold even if most of the row is white.
     row_min = gray.min(axis=1)
     TEXT_THRESHOLD = 200  # values below this indicate ink on a light background
 
-    bboxes = []
+    # Find y-ranges of text rows
+    y_ranges = []
     in_text = False
     y_start = 0
     for y in range(h):
@@ -216,15 +215,32 @@ def _split_into_text_rows(image) -> List:
             y_start = y
         elif not has_ink and in_text:
             in_text = False
-            if y - y_start >= 3:  # discard tiny noise bands
-                y0 = max(0, y_start - 2)
-                y1 = min(h, y + 2)
-                bboxes.append([0.0, float(y0), float(w), float(y1)])
+            if y - y_start >= 3:
+                y_ranges.append((y_start, y))
     if in_text and h - y_start >= 3:
-        y0 = max(0, y_start - 2)
-        bboxes.append([0.0, float(y0), float(w), float(h)])
+        y_ranges.append((y_start, h))
+
+    # For each row, find the tight x-range
+    bboxes = []
+    MARGIN = 4
+    for y0, y1 in y_ranges:
+        strip = gray[y0:y1]
+        col_min = strip.min(axis=0)
+        ink_cols = np.where(col_min < TEXT_THRESHOLD)[0]
+        if len(ink_cols) == 0:
+            continue
+        x0 = int(ink_cols[0])
+        x1 = int(ink_cols[-1]) + 1
+        # Add margin, clamp to image bounds
+        xx0 = max(0, x0 - MARGIN)
+        yy0 = max(0, y0 - MARGIN)
+        xx1 = min(w, x1 + MARGIN)
+        yy1 = min(h, y1 + MARGIN)
+        bboxes.append([float(xx0), float(yy0), float(xx1), float(yy1)])
 
     print(f"[surya] pixel-projection fallback: {len(bboxes)} row(s) found", flush=True)
+    for bb in bboxes:
+        print(f"  tight_bbox={bb}", flush=True)
     return bboxes
 
 
