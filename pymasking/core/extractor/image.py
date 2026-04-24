@@ -188,6 +188,53 @@ def _load_models() -> None:
         raise RuntimeError(f"surya-ocr が必要です: pip install surya-ocr\n{e}") from e
 
 
+def _split_into_text_rows(image) -> List:
+    """Find text-row bboxes via horizontal pixel-intensity projection.
+
+    Scans each row for dark pixels (ink).  Consecutive dark rows form one text
+    line; gaps between them are the inter-line whitespace.  This is simple but
+    extremely reliable for clean documents with light backgrounds.
+
+    Returns [[x1, y1, x2, y2], ...] in original image pixel coords.
+    """
+    import numpy as np
+    gray = np.asarray(image.convert("L"))
+    h, w = gray.shape
+
+    # Use the MINIMUM pixel value per row: a row containing any dark ink will
+    # have min < threshold even if most of the row is white.
+    row_min = gray.min(axis=1)
+    TEXT_THRESHOLD = 200  # values below this indicate ink on a light background
+
+    bboxes = []
+    in_text = False
+    y_start = 0
+    for y in range(h):
+        has_ink = int(row_min[y]) < TEXT_THRESHOLD
+        if has_ink and not in_text:
+            in_text = True
+            y_start = y
+        elif not has_ink and in_text:
+            in_text = False
+            if y - y_start >= 3:  # discard tiny noise bands
+                y0 = max(0, y_start - 2)
+                y1 = min(h, y + 2)
+                bboxes.append([0.0, float(y0), float(w), float(y1)])
+    if in_text and h - y_start >= 3:
+        y0 = max(0, y_start - 2)
+        bboxes.append([0.0, float(y0), float(w), float(h)])
+
+    print(f"[surya] pixel-projection fallback: {len(bboxes)} row(s) found", flush=True)
+    return bboxes
+
+
+def _bbox_covers_image(bbox, img_w: int, img_h: int, threshold: float = 0.5) -> bool:
+    """Return True if a single bbox covers more than `threshold` of the image area."""
+    x1, y1, x2, y2 = bbox
+    bbox_area = max(0.0, x2 - x1) * max(0.0, y2 - y1)
+    return bbox_area > img_w * img_h * threshold
+
+
 def _ocr_lines(image) -> List[Tuple[str, Tuple[int, int, int, int]]]:
     """Run surya OCR; return list of (text, (x1, y1, x2, y2))."""
     _load_models()
@@ -244,13 +291,8 @@ def _ocr_lines(image) -> List[Tuple[str, Tuple[int, int, int, int]]]:
             print(f"[surya] detection: {len(raw_bboxes)} bbox(es)"
                   f"  image_size={image.size}", flush=True)
 
-        if not raw_bboxes:
-            return lines
-
-        # Remap bboxes from padded+upscaled space back to original image coords.
-        # surya returns bboxes in the input image's pixel space (max_dim x max_dim),
-        # so: subtract padding offset, then divide by upscale factor.
-        bbox_coords = []
+        # Remap surya bboxes from padded+upscaled space → original image coords.
+        surya_bbox_coords = []
         for b in raw_bboxes:
             x1, y1, x2, y2 = b.bbox
             x1 = (float(x1) - pad_x) / scale
@@ -262,7 +304,23 @@ def _ocr_lines(image) -> List[Tuple[str, Tuple[int, int, int, int]]]:
             x2 = max(0.0, min(x2, orig_w))
             y2 = max(0.0, min(y2, orig_h))
             if x2 > x1 and y2 > y1:
-                bbox_coords.append([x1, y1, x2, y2])
+                surya_bbox_coords.append([x1, y1, x2, y2])
+
+        # Quality check: if detection returned nothing, or returned a single bbox
+        # that covers most of the image (all lines merged into one blob), fall back
+        # to pixel-projection line splitting which is much more reliable for
+        # plain-text documents on light backgrounds.
+        use_fallback = (
+            not surya_bbox_coords
+            or (
+                len(surya_bbox_coords) == 1
+                and _bbox_covers_image(surya_bbox_coords[0], orig_w, orig_h, 0.4)
+            )
+        )
+        if use_fallback:
+            bbox_coords = _split_into_text_rows(image)
+        else:
+            bbox_coords = surya_bbox_coords
 
         if not bbox_coords:
             return lines
