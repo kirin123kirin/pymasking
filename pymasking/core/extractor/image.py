@@ -5,6 +5,8 @@ import os
 from pathlib import Path
 from typing import List, Tuple
 
+from PIL import Image
+
 from ..detector import detect_all, resolve_overlaps
 from . import make_output_path
 
@@ -23,6 +25,11 @@ _surya_new_api = None  # True = predictor-based (>=0.6), False = model/processor
 def _ensure_hf_home() -> None:
     _HF_CACHE.mkdir(parents=True, exist_ok=True)
     os.environ.setdefault("MODEL_CACHE_DIR", str(_HF_CACHE))
+    # Lower detection thresholds so weak/low-contrast text is not dropped.
+    # surya defaults: TEXT=0.6, BLANK=0.35.  Dynamic scaling clamps at 0.15 floor
+    # for text_threshold and 0.1 for low_text, so setting these low has a real effect.
+    os.environ.setdefault("DETECTOR_TEXT_THRESHOLD", "0.2")
+    os.environ.setdefault("DETECTOR_BLANK_THRESHOLD", "0.1")
 
 
 def _apply_surya_compat_patches() -> None:
@@ -193,17 +200,32 @@ def _ocr_lines(image) -> List[Tuple[str, Tuple[int, int, int, int]]]:
         #       → List[OCRResult], each with .text_lines (TextLine list)
 
         # Step 1: detect text line bboxes.
-        # Pad non-square images to a square with white before detection to prevent
-        # aspect-ratio distortion: DetectionPredictor always stretches to 512x512,
-        # which can cause missed detections on wide/tall images.
+        # Pre-processing: upscale small images then pad to square so the internal
+        # 512x512 downscale doesn't compress text too aggressively and so aspect
+        # ratio is preserved (DetectionPredictor stretches whatever it gets to
+        # square).  Padding is centered — the detector is more reliable when
+        # content is in the middle of the canvas.
+        from PIL import ImageOps as _ImageOps
         orig_w, orig_h = image.size
-        if orig_w != orig_h:
-            from PIL import ImageOps as _ImageOps
-            max_dim = max(orig_w, orig_h)
-            det_image = _ImageOps.pad(image, (max_dim, max_dim),
-                                      color=(255, 255, 255), centering=(0, 0))
+        long_side = max(orig_w, orig_h)
+        scale = max(1.0, 1280.0 / long_side)  # upscale to at least 1280 on long side
+        if scale > 1.0:
+            new_w = int(orig_w * scale)
+            new_h = int(orig_h * scale)
+            up_image = image.resize((new_w, new_h), Image.Resampling.LANCZOS)
         else:
-            det_image = image
+            up_image = image
+            new_w, new_h = orig_w, orig_h
+
+        if new_w != new_h:
+            max_dim = max(new_w, new_h)
+            det_image = _ImageOps.pad(up_image, (max_dim, max_dim),
+                                      color=(255, 255, 255), centering=(0.5, 0.5))
+            pad_x = (max_dim - new_w) / 2.0
+            pad_y = (max_dim - new_h) / 2.0
+        else:
+            det_image = up_image
+            pad_x = pad_y = 0.0
 
         det_results = _det_model([det_image], include_maps=True)
         r0 = det_results[0] if det_results else None
@@ -225,14 +247,20 @@ def _ocr_lines(image) -> List[Tuple[str, Tuple[int, int, int, int]]]:
         if not raw_bboxes:
             return lines
 
-        # Clip bboxes from padded-image space back to original image bounds.
+        # Remap bboxes from padded+upscaled space back to original image coords.
+        # surya returns bboxes in the input image's pixel space (max_dim x max_dim),
+        # so: subtract padding offset, then divide by upscale factor.
         bbox_coords = []
         for b in raw_bboxes:
             x1, y1, x2, y2 = b.bbox
-            x1 = max(0.0, min(float(x1), orig_w))
-            y1 = max(0.0, min(float(y1), orig_h))
-            x2 = max(0.0, min(float(x2), orig_w))
-            y2 = max(0.0, min(float(y2), orig_h))
+            x1 = (float(x1) - pad_x) / scale
+            y1 = (float(y1) - pad_y) / scale
+            x2 = (float(x2) - pad_x) / scale
+            y2 = (float(y2) - pad_y) / scale
+            x1 = max(0.0, min(x1, orig_w))
+            y1 = max(0.0, min(y1, orig_h))
+            x2 = max(0.0, min(x2, orig_w))
+            y2 = max(0.0, min(y2, orig_h))
             if x2 > x1 and y2 > y1:
                 bbox_coords.append([x1, y1, x2, y2])
 
@@ -251,7 +279,9 @@ def _ocr_lines(image) -> List[Tuple[str, Tuple[int, int, int, int]]]:
                     b = line.bbox  # PolygonBox computed property → [x1,y1,x2,y2]
                     lines.append((line.text, (int(b[0]), int(b[1]), int(b[2]), int(b[3]))))
 
-        print(f"[surya] {len(lines)} line(s) extracted", flush=True)
+        print(f"[surya] {len(lines)} line(s) extracted:", flush=True)
+        for t, bb in lines:
+            print(f"  {bb} -> {t!r}", flush=True)
     else:
         from surya.ocr import run_ocr
         results = run_ocr(
@@ -272,7 +302,9 @@ def _get_sensitive_words(text: str) -> List[str]:
     words: List[str] = []
     for det in detections:
         words.extend(det.mask_text.split())
-    return list(set(w for w in words if w.strip()))
+    result = list(set(w for w in words if w.strip()))
+    print(f"[surya] sensitive words detected: {result}", flush=True)
+    return result
 
 
 def _find_sensitive_boxes(
