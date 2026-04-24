@@ -119,10 +119,13 @@ def _find_system_dic() -> Path | None:
 
 
 def _update_sudachi_json(dic_path: Path) -> None:
-    """Register names_user.dic in sudachipy's resources/sudachi.json.
+    """Update sudachipy's resources/sudachi.json with relative paths.
 
-    This is the config file sudachipy (and GiNZA) actually reads at runtime.
-    SUDACHI_SETTINGS_PATH is unreliable with GiNZA, so we edit the file directly.
+    Uses relative paths so the config is portable regardless of install location.
+    - systemDict: ../../sudachidict_core/resources/system.dic
+      (site-packages/sudachipy/resources/ -> ../../ -> site-packages/sudachidict_core/)
+    - userDict:   ../../../../../../data/names_user.dic
+      (site-packages/sudachipy/resources/ -> 6 levels up -> %INSTALL_DIR%/data/)
     """
     import json
     try:
@@ -133,18 +136,14 @@ def _update_sudachi_json(dic_path: Path) -> None:
             return
 
         cfg = json.loads(config_path.read_text(encoding="utf-8"))
-        dic_str = dic_path.as_posix()  # forward slashes work on Windows too
 
-        existing = cfg.get("userDict", [])
-        # Replace any stale path pointing to names_user.dic
-        existing = [p for p in existing
-                    if not p.replace("\\", "/").endswith("/data/names_user.dic")]
-        existing.append(dic_str)
-        cfg["userDict"] = existing
+        cfg["systemDict"] = "../../sudachidict_core/resources/system.dic"
+        cfg["userDict"] = ["../../../../../../data/names_user.dic"]
 
         config_path.write_text(json.dumps(cfg, ensure_ascii=False, indent=2),
                                encoding="utf-8")
-        print(f"  sudachi.json updated -> userDict: {dic_str}")
+        print(f"  sudachi.json updated -> systemDict: {cfg['systemDict']}")
+        print(f"  sudachi.json updated -> userDict: {cfg['userDict']}")
     except Exception as e:
         print(f"  [WARNING] Could not update sudachi.json: {e}")
 
