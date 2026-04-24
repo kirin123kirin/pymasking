@@ -121,7 +121,7 @@ try:
             dummy = Image.new("RGB", (64, 32), color=(255, 255, 255))
             # Call predictor directly (surya >= 0.6 API; surya.ocr removed)
             try:
-                rec([dummy], [["ja"]])
+                rec([dummy])  # task_names=None → ocr_with_boxes default
                 _forced = True
             except Exception:
                 pass
@@ -130,10 +130,9 @@ try:
                 try:
                     det_result = det([dummy])
                     if det_result and det_result[0].bboxes:
-                        from PIL import Image as _PIL
                         crops = [dummy.crop(tuple(int(v) for v in b.bbox))
                                  for b in det_result[0].bboxes[:1]]
-                        rec(crops, [["ja"]])
+                        rec(crops)  # task_names=None default
                     _forced = True
                 except Exception:
                     pass

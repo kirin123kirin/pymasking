@@ -201,8 +201,9 @@ def _ocr_lines(image) -> List[Tuple[str, Tuple[int, int, int, int]]]:
             return lines
 
         # Step 2: recognise text (pass original image + clipped bboxes)
-        # bboxes format: List[List[List[int]]] — one list of boxes per image
-        rec_results = _rec_model([image], [["ja", "en"]], bboxes=[bbox_coords])
+        # surya >= 0.6 new API: 2nd arg is task_names (not langs); default None →
+        # [TaskNames.ocr_with_boxes] per image which is correct when bboxes provided.
+        rec_results = _rec_model([image], bboxes=[bbox_coords])
 
         # Step 3: extract text from OCRResult.text_lines
         if rec_results and getattr(rec_results[0], "text_lines", None):
