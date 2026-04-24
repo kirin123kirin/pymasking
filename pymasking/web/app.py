@@ -44,6 +44,16 @@ _UNMASK_EXTS = {
 }
 
 
+def _preload_ocr_models() -> None:
+    """Background thread: load surya OCR models from local disk at startup."""
+    try:
+        from pymasking.core.extractor.image import preload_models
+        preload_models()
+    except Exception as e:
+        import logging as _logging
+        _logging.getLogger(__name__).warning("OCRモデルのプリロードに失敗しました (初回リクエスト時に再試行): %s", e)
+
+
 def create_app() -> Flask:
     logging.getLogger("werkzeug").addFilter(_NoHeartbeatFilter())
 
@@ -51,6 +61,7 @@ def create_app() -> Flask:
     app.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB
 
     threading.Thread(target=_watchdog, daemon=True, name="heartbeat-watchdog").start()
+    threading.Thread(target=_preload_ocr_models, daemon=True, name="ocr-model-preload").start()
 
     @app.route("/")
     def index():

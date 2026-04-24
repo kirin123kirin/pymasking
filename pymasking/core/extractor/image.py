@@ -123,11 +123,17 @@ def _apply_surya_compat_patches() -> None:
         pass
 
 
+def preload_models() -> None:
+    """Public entry point to eagerly load OCR models (call at app/CLI startup)."""
+    _load_models()
+
+
 def _load_models() -> None:
     global _det_model, _det_processor, _rec_model, _rec_processor, _surya_new_api
     if _det_model is not None and _surya_new_api is not None:
         return
     _ensure_hf_home()
+    print("[surya] OCRモデルをローカルキャッシュから読み込み中 (インターネット接続不要)...", flush=True)
     # surya >= 0.6: predictor-based API
     try:
         from surya.detection import DetectionPredictor
@@ -153,7 +159,7 @@ def _load_models() -> None:
         _det_processor = None
         _rec_processor = None
         _surya_new_api = True
-        print(f"[surya] new API loaded det={type(_det_model).__name__} rec={type(_rec_model).__name__}", flush=True)
+        print("[surya] OCRモデル読み込み完了 (ローカル)", flush=True)
         return
     except ImportError:
         pass
