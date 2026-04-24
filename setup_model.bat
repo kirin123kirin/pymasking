@@ -37,7 +37,7 @@ set EMBED_URL=https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd
 set EMBED_ZIP=%TEMP%\python-3.12.10-embed-amd64.zip
 
 echo Downloading: %EMBED_URL%
-powershell -NoProfile -Command "Invoke-WebRequest -UseBasicParsing -Uri '%EMBED_URL%' -OutFile '%EMBED_ZIP%'"
+powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri '%EMBED_URL%' -OutFile '%EMBED_ZIP%'"
 if errorlevel 1 goto :error
 
 echo Extracting to: %RUNTIME_DIR%
@@ -57,7 +57,7 @@ for %%D in (msvcp140.dll vcruntime140.dll vcruntime140_1.dll) do (
 )
 if %VCRT_MISSING%==1 (
     echo   Visual C++ Redistributable not found. Installing...
-    powershell -NoProfile -Command "Invoke-WebRequest -UseBasicParsing -Uri 'https://aka.ms/vs/17/release/vc_redist.x64.exe' -OutFile '%TEMP%\vc_redist.x64.exe'"
+    powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri 'https://aka.ms/vs/17/release/vc_redist.x64.exe' -OutFile '%TEMP%\vc_redist.x64.exe'"
     "%TEMP%\vc_redist.x64.exe" /install /quiet /norestart
     del /f /q "%TEMP%\vc_redist.x64.exe"
 )
@@ -79,7 +79,7 @@ if not errorlevel 1 (
     goto :install_torch
 )
 set GETPIP=%TEMP%\get-pip.py
-powershell -NoProfile -Command "Invoke-WebRequest -UseBasicParsing -Uri 'https://bootstrap.pypa.io/get-pip.py' -OutFile '%GETPIP%'"
+powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri 'https://bootstrap.pypa.io/get-pip.py' -OutFile '%GETPIP%'"
 if errorlevel 1 goto :error
 "%PYTHON%" "%GETPIP%" --no-warn-script-location
 if errorlevel 1 goto :error
@@ -122,9 +122,13 @@ if exist "%TESSERACT_EXE%" (
 set TESS_URL=https://github.com/UB-Mannheim/tesseract/releases/download/v5.5.0.20241111/tesseract-ocr-w64-setup-5.5.0.20241111.exe
 set TESS_INSTALLER=%TEMP%\tesseract-setup.exe
 echo Downloading Tesseract installer (~60MB)...
-powershell -NoProfile -Command "Invoke-WebRequest -Uri '%TESS_URL%' -OutFile '%TESS_INSTALLER%'"
+powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri '%TESS_URL%' -OutFile '%TESS_INSTALLER%'"
 if errorlevel 1 (
-    echo [WARNING] Failed to download Tesseract. Image OCR will not be available.
+    echo [WARNING] Failed to download Tesseract.
+    echo          Please install manually from:
+    echo          https://github.com/UB-Mannheim/tesseract/wiki
+    echo          Install to: %TESSERACT_DIR%
+    echo          Include jpn language data during installation.
     goto :tesseract_done
 )
 echo Installing Tesseract to %TESSERACT_DIR%...
@@ -137,12 +141,12 @@ if not exist "%TESSERACT_EXE%" (
 echo Downloading Japanese language data...
 set TESSDATA_DIR=%TESSERACT_DIR%\tessdata
 set TESSDATA_BASE=https://github.com/tesseract-ocr/tessdata/raw/main
-powershell -NoProfile -Command "Invoke-WebRequest -Uri '%TESSDATA_BASE%/jpn.traineddata' -OutFile '%TESSDATA_DIR%\jpn.traineddata'"
+powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri '%TESSDATA_BASE%/jpn.traineddata' -OutFile '%TESSDATA_DIR%\jpn.traineddata'"
 if errorlevel 1 echo [WARNING] Failed to download jpn.traineddata.
-powershell -NoProfile -Command "Invoke-WebRequest -Uri '%TESSDATA_BASE%/jpn_vert.traineddata' -OutFile '%TESSDATA_DIR%\jpn_vert.traineddata'"
+powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri '%TESSDATA_BASE%/jpn_vert.traineddata' -OutFile '%TESSDATA_DIR%\jpn_vert.traineddata'"
 if errorlevel 1 echo [WARNING] Failed to download jpn_vert.traineddata.
 if not exist "%TESSDATA_DIR%\script" mkdir "%TESSDATA_DIR%\script"
-powershell -NoProfile -Command "Invoke-WebRequest -Uri '%TESSDATA_BASE%/script/Japanese.traineddata' -OutFile '%TESSDATA_DIR%\script\Japanese.traineddata'"
+powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri '%TESSDATA_BASE%/script/Japanese.traineddata' -OutFile '%TESSDATA_DIR%\script\Japanese.traineddata'"
 if errorlevel 1 echo [WARNING] Failed to download script/Japanese.traineddata.
 echo Tesseract installed: %TESSERACT_EXE%
 :tesseract_done
