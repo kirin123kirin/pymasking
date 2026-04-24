@@ -44,7 +44,7 @@ pymasking/
 │   └── person_names.txt     # JMnedict 由来の完全人名リスト（setup_model.bat で生成）
 ├── scripts/
 │   ├── runtime/             # Python 3.12.10 embedded（setup_model.bat で生成、git 管理外）
-│   ├── download_model.py    # data/models/ja_ginza/ へモデルをコピーするスクリプト
+│   ├── tesseract/           # Tesseract OCR v5.5.0 + jpn 言語データ（setup_model.bat で生成、git 管理外）
 │   └── download_names.py    # JMnedict を取得して data/ へ保存するスクリプト
 ├── pymasking/
 │   ├── core/

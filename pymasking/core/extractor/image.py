@@ -1,4 +1,4 @@
-"""画像ファイルの視覚的マスキング処理（surya-ocr で検出 → 黒塗り）。"""
+"""画像ファイルの視覚的マスキング処理（Tesseract OCR で検出 → 黒塗り）。"""
 
 import logging
 import os
@@ -13,362 +13,76 @@ from . import make_output_path
 _log = logging.getLogger(__name__)
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-_HF_CACHE = _REPO_ROOT / "data" / "models" / "hf_cache"
 
-_det_model = None
-_det_processor = None
-_rec_model = None
-_rec_processor = None
-_surya_new_api = None  # True = predictor-based (>=0.6), False = model/processor (<0.6)
+_TESSERACT_CANDIDATES = [
+    str(_REPO_ROOT / "scripts" / "tesseract" / "tesseract.exe"),  # 同梱パス（最優先）
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+    r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+]
 
-
-def _ensure_hf_home() -> None:
-    _HF_CACHE.mkdir(parents=True, exist_ok=True)
-    os.environ.setdefault("MODEL_CACHE_DIR", str(_HF_CACHE))
-    # Lower detection thresholds so weak/low-contrast text is not dropped.
-    # surya defaults: TEXT=0.6, BLANK=0.35.  Dynamic scaling clamps at 0.15 floor
-    # for text_threshold and 0.1 for low_text, so setting these low has a real effect.
-    os.environ.setdefault("DETECTOR_TEXT_THRESHOLD", "0.2")
-    os.environ.setdefault("DETECTOR_BLANK_THRESHOLD", "0.1")
+_tesseract_configured = False
 
 
-def _apply_surya_compat_patches() -> None:
-    """Monkey-patches for surya/transformers version mismatches."""
-    import torch
+def _configure_tesseract() -> None:
+    """Locate tesseract.exe and tessdata/; raise a user-friendly error if missing."""
+    global _tesseract_configured
+    if _tesseract_configured:
+        return
+    import shutil
+    import pytesseract
 
-    # 1. SuryaDecoderConfig missing pad_token_id: newer transformers raises
-    #    AttributeError for absent config keys instead of returning None.
-    try:
-        from surya.common.surya.decoder.config import SuryaDecoderConfig
-        if not hasattr(SuryaDecoderConfig, 'pad_token_id'):
-            SuryaDecoderConfig.pad_token_id = 0
-    except Exception:
-        pass
+    if shutil.which("tesseract"):
+        _tesseract_configured = True
+        return
 
-    # 2. ROPE_INIT_FUNCTIONS missing "default": newer transformers removed the
-    #    standard no-scaling RoPE entry; surya's Qwen2RotaryEmbedding uses it.
-    try:
-        from transformers.modeling_rope_utils import ROPE_INIT_FUNCTIONS
-        if "default" not in ROPE_INIT_FUNCTIONS:
-            def _rope_default(config, device=None, seq_len=None, **kwargs):
-                head_dim = getattr(
-                    config, 'head_dim',
-                    config.hidden_size // config.num_attention_heads,
-                )
-                base = float(getattr(config, 'rope_theta', 10000.0))
-                inv_freq = 1.0 / (
-                    base ** (torch.arange(0, head_dim, 2, dtype=torch.float32) / head_dim)
-                )
-                if device is not None:
-                    inv_freq = inv_freq.to(device)
-                return inv_freq, 1.0
-            ROPE_INIT_FUNCTIONS["default"] = _rope_default
-    except Exception:
-        pass
+    username = os.environ.get("USERNAME", "")
+    candidates = _TESSERACT_CANDIDATES + [
+        rf"C:\Users\{username}\AppData\Local\Tesseract-OCR\tesseract.exe",
+    ]
+    for p in candidates:
+        if Path(p).exists():
+            pytesseract.pytesseract.tesseract_cmd = str(p)
+            tessdata = Path(p).parent / "tessdata"
+            if tessdata.exists():
+                os.environ["TESSDATA_PREFIX"] = str(tessdata)
+            _tesseract_configured = True
+            return
 
-    # 3. SuryaModel missing post_init() call + outdated _tied_weights_keys format.
-    #    transformers 5.x requires all_tied_weights_keys dict attribute and dict-format
-    #    _tied_weights_keys; surya's tie_weights uses removed _tie_or_clone_weights helper.
-    try:
-        from surya.common.surya import SuryaModel
-        if isinstance(getattr(SuryaModel, '_tied_weights_keys', None), list):
-            SuryaModel._tied_weights_keys = {"lm_head.weight": "embedder.token_embed.weight"}
-        if not getattr(SuryaModel.__init__, '__pymasking_patched__', False):
-            _orig_surya_init = SuryaModel.__init__
-
-            def _patched_surya_init(self, *args, **kwargs):
-                _orig_surya_init(self, *args, **kwargs)
-                if not hasattr(self, 'all_tied_weights_keys'):
-                    self.all_tied_weights_keys = {
-                        "lm_head.weight": "embedder.token_embed.weight",
-                    }
-            _patched_surya_init.__pymasking_patched__ = True
-            SuryaModel.__init__ = _patched_surya_init
-
-        def _patched_surya_tie_weights(self, missing_keys=None, recompute_mapping=True):
-            try:
-                self.lm_head.weight = self.embedder.token_embed.weight
-                if missing_keys is not None:
-                    missing_keys.discard("lm_head.weight")
-            except Exception:
-                pass
-        SuryaModel.tie_weights = _patched_surya_tie_weights
-    except Exception:
-        pass
-
-    # 4. Qwen2_5_VisionRotaryEmbedding stores inv_freq as a plain attribute (not a
-    #    registered buffer).  When transformers 5.x creates the model on the "meta"
-    #    device for lazy loading, inv_freq becomes a meta tensor and is never moved
-    #    to CPU by model.to(device).  Recompute on first forward call if on meta.
-    try:
-        from surya.common.surya.encoder import (  # noqa: F401
-            Qwen2_5_VisionRotaryEmbedding as _VRot,
-        )
-        if not getattr(_VRot.__init__, '__pymasking_patched__', False):
-            _orig_vrot_init = _VRot.__init__
-
-            def _patched_vrot_init(self, dim: int, theta: float = 10000.0) -> None:
-                _orig_vrot_init(self, dim, theta)
-                self._rot_dim = dim
-                self._rot_theta = theta
-            _patched_vrot_init.__pymasking_patched__ = True
-            _VRot.__init__ = _patched_vrot_init
-
-        def _patched_vrot_forward(self, seqlen: int):
-            inv_freq = self.inv_freq
-            if hasattr(inv_freq, 'device') and inv_freq.device.type == 'meta':
-                dim = getattr(self, '_rot_dim', inv_freq.shape[0] * 2)
-                theta = getattr(self, '_rot_theta', 10000.0)
-                inv_freq = 1.0 / (theta ** (
-                    torch.arange(0, dim, 2, dtype=torch.float32) / dim
-                ))
-                self.inv_freq = inv_freq
-            seq = torch.arange(seqlen, device='cpu', dtype=inv_freq.dtype)
-            return torch.outer(seq, inv_freq)
-        _VRot.forward = _patched_vrot_forward
-    except Exception:
-        pass
+    raise RuntimeError(
+        "Tesseract-OCR が見つかりません。\n"
+        "setup_model.bat を実行するか、"
+        "https://github.com/UB-Mannheim/tesseract/wiki からインストーラーで "
+        "jpn 言語データを含めてインストールしてください。"
+    )
 
 
 def preload_models() -> None:
-    """Public entry point to eagerly load OCR models (call at app/CLI startup)."""
-    _load_models()
-
-
-def _load_models() -> None:
-    global _det_model, _det_processor, _rec_model, _rec_processor, _surya_new_api
-    if _det_model is not None and _surya_new_api is not None:
-        return
-    _ensure_hf_home()
-    print("[surya] OCRモデルをローカルキャッシュから読み込み中 (インターネット接続不要)...", flush=True)
-    # surya >= 0.6: predictor-based API
+    """Lightweight no-op kept for app-startup compatibility (Tesseract loads per-call)."""
     try:
-        from surya.detection import DetectionPredictor
-        from surya.recognition import RecognitionPredictor
-
-        _det_model = DetectionPredictor()
-        # Patch attributes missing from older model checkpoints (surya/issues/492)
-        if hasattr(_det_model, 'model') and hasattr(_det_model.model, 'config'):
-            cfg = _det_model.model.config
-            if not hasattr(cfg, 'bbox_size'):
-                cfg.bbox_size = 4
-
-        # RecognitionPredictor requires FoundationPredictor (not DetectionPredictor).
-        # Passing DetectionPredictor caused processor.image_processor AttributeError.
-        _apply_surya_compat_patches()
-        try:
-            from surya.foundation import FoundationPredictor
-            _rec_model = RecognitionPredictor(FoundationPredictor())
-        except (ImportError, TypeError):
-            # Older surya without FoundationPredictor
-            _rec_model = RecognitionPredictor()
-
-        _det_processor = None
-        _rec_processor = None
-        _surya_new_api = True
-        print("[surya] OCRモデル読み込み完了 (ローカル)", flush=True)
-        return
-    except ImportError:
+        _configure_tesseract()
+    except Exception:
         pass
-    # surya < 0.6: model/processor API
-    try:
-        from surya.model.detection.model import (
-            load_model as load_det,
-            load_processor as load_det_proc,
-        )
-        from surya.model.recognition.model import load_model as load_rec
-        from surya.model.recognition.processor import load_processor as load_rec_proc
-        _det_model = load_det()
-        _det_processor = load_det_proc()
-        _rec_model = load_rec()
-        _rec_processor = load_rec_proc()
-        _surya_new_api = False
-        return
-    except ImportError as e:
-        raise RuntimeError(f"surya-ocr が必要です: pip install surya-ocr\n{e}") from e
 
 
-def _split_into_text_rows(image) -> List:
-    """Find text-row bboxes via pixel-intensity projection.
+def _ocr_words(image) -> List[Tuple[str, Tuple[int, int, int, int]]]:
+    """Run Tesseract OCR on image; return list of (word_text, (x, y, w, h))."""
+    import pytesseract
 
-    1. Scan rows for dark pixels (ink) → detect text-line y-ranges.
-    2. Within each line, scan columns for ink → detect tight x-range.
+    _configure_tesseract()
+    data = pytesseract.image_to_data(
+        image, lang="jpn+eng", output_type=pytesseract.Output.DICT
+    )
 
-    Returns [[x1, y1, x2, y2], ...] in original image pixel coords, trimmed to
-    actual text bounds so the recognition model sees minimal whitespace padding.
-    """
-    import numpy as np
-    gray = np.asarray(image.convert("L"))
-    h, w = gray.shape
-
-    row_min = gray.min(axis=1)
-    TEXT_THRESHOLD = 200  # values below this indicate ink on a light background
-
-    # Find y-ranges of text rows
-    y_ranges = []
-    in_text = False
-    y_start = 0
-    for y in range(h):
-        has_ink = int(row_min[y]) < TEXT_THRESHOLD
-        if has_ink and not in_text:
-            in_text = True
-            y_start = y
-        elif not has_ink and in_text:
-            in_text = False
-            if y - y_start >= 3:
-                y_ranges.append((y_start, y))
-    if in_text and h - y_start >= 3:
-        y_ranges.append((y_start, h))
-
-    # For each row, find the tight x-range
-    bboxes = []
-    MARGIN = 4
-    for y0, y1 in y_ranges:
-        strip = gray[y0:y1]
-        col_min = strip.min(axis=0)
-        ink_cols = np.where(col_min < TEXT_THRESHOLD)[0]
-        if len(ink_cols) == 0:
+    words: List[Tuple[str, Tuple[int, int, int, int]]] = []
+    for i, txt in enumerate(data["text"]):
+        if not txt or not txt.strip():
             continue
-        x0 = int(ink_cols[0])
-        x1 = int(ink_cols[-1]) + 1
-        # Add margin, clamp to image bounds
-        xx0 = max(0, x0 - MARGIN)
-        yy0 = max(0, y0 - MARGIN)
-        xx1 = min(w, x1 + MARGIN)
-        yy1 = min(h, y1 + MARGIN)
-        bboxes.append([float(xx0), float(yy0), float(xx1), float(yy1)])
-
-    print(f"[surya] pixel-projection fallback: {len(bboxes)} row(s) found", flush=True)
-    for bb in bboxes:
-        print(f"  tight_bbox={bb}", flush=True)
-    return bboxes
-
-
-def _bbox_covers_image(bbox, img_w: int, img_h: int, threshold: float = 0.5) -> bool:
-    """Return True if a single bbox covers more than `threshold` of the image area."""
-    x1, y1, x2, y2 = bbox
-    bbox_area = max(0.0, x2 - x1) * max(0.0, y2 - y1)
-    return bbox_area > img_w * img_h * threshold
-
-
-def _ocr_lines(image) -> List[Tuple[str, Tuple[int, int, int, int]]]:
-    """Run surya OCR; return list of (text, (x1, y1, x2, y2))."""
-    _load_models()
-    lines: List[Tuple[str, Tuple[int, int, int, int]]] = []
-
-    if _surya_new_api:
-        # surya >= 0.6 API:
-        #   DetectionPredictor([image])  → TextDetectionResult with .bboxes (PolygonBox list)
-        #   RecognitionPredictor([image], langs, bboxes=[[x1,y1,x2,y2],...])
-        #       → List[OCRResult], each with .text_lines (TextLine list)
-
-        # Step 1: detect text line bboxes.
-        # Pre-processing: upscale small images then pad to square so the internal
-        # 512x512 downscale doesn't compress text too aggressively and so aspect
-        # ratio is preserved (DetectionPredictor stretches whatever it gets to
-        # square).  Padding is centered — the detector is more reliable when
-        # content is in the middle of the canvas.
-        from PIL import ImageOps as _ImageOps
-        orig_w, orig_h = image.size
-        long_side = max(orig_w, orig_h)
-        scale = max(1.0, 1280.0 / long_side)  # upscale to at least 1280 on long side
-        if scale > 1.0:
-            new_w = int(orig_w * scale)
-            new_h = int(orig_h * scale)
-            up_image = image.resize((new_w, new_h), Image.Resampling.LANCZOS)
-        else:
-            up_image = image
-            new_w, new_h = orig_w, orig_h
-
-        if new_w != new_h:
-            max_dim = max(new_w, new_h)
-            det_image = _ImageOps.pad(up_image, (max_dim, max_dim),
-                                      color=(255, 255, 255), centering=(0.5, 0.5))
-            pad_x = (max_dim - new_w) / 2.0
-            pad_y = (max_dim - new_h) / 2.0
-        else:
-            det_image = up_image
-            pad_x = pad_y = 0.0
-
-        det_results = _det_model([det_image], include_maps=True)
-        r0 = det_results[0] if det_results else None
-        raw_bboxes = getattr(r0, "bboxes", None) or []
-
-        # Diagnostic: print heatmap signal even when no bboxes found.
-        hm = getattr(r0, "heatmap", None) if r0 else None
-        if hm is not None:
-            import numpy as _np
-            hm_arr = _np.asarray(hm)
-            hm_max = int(hm_arr.max())
-            print(f"[surya] detection: {len(raw_bboxes)} bbox(es)"
-                  f"  image_size={image.size}"
-                  f"  heatmap_max={hm_max}/255", flush=True)
-        else:
-            print(f"[surya] detection: {len(raw_bboxes)} bbox(es)"
-                  f"  image_size={image.size}", flush=True)
-
-        # Remap surya bboxes from padded+upscaled space → original image coords.
-        surya_bbox_coords = []
-        for b in raw_bboxes:
-            x1, y1, x2, y2 = b.bbox
-            x1 = (float(x1) - pad_x) / scale
-            y1 = (float(y1) - pad_y) / scale
-            x2 = (float(x2) - pad_x) / scale
-            y2 = (float(y2) - pad_y) / scale
-            x1 = max(0.0, min(x1, orig_w))
-            y1 = max(0.0, min(y1, orig_h))
-            x2 = max(0.0, min(x2, orig_w))
-            y2 = max(0.0, min(y2, orig_h))
-            if x2 > x1 and y2 > y1:
-                surya_bbox_coords.append([x1, y1, x2, y2])
-
-        # Quality check: if detection returned nothing, or returned a single bbox
-        # that covers most of the image (all lines merged into one blob), fall back
-        # to pixel-projection line splitting which is much more reliable for
-        # plain-text documents on light backgrounds.
-        use_fallback = (
-            not surya_bbox_coords
-            or (
-                len(surya_bbox_coords) == 1
-                and _bbox_covers_image(surya_bbox_coords[0], orig_w, orig_h, 0.4)
-            )
-        )
-        if use_fallback:
-            bbox_coords = _split_into_text_rows(image)
-        else:
-            bbox_coords = surya_bbox_coords
-
-        if not bbox_coords:
-            return lines
-
-        # Step 2: recognise text (pass original image + clipped bboxes)
-        # surya >= 0.6 new API: 2nd arg is task_names (not langs); default None →
-        # [TaskNames.ocr_with_boxes] per image which is correct when bboxes provided.
-        rec_results = _rec_model([image], bboxes=[bbox_coords])
-
-        # Step 3: extract text from OCRResult.text_lines
-        if rec_results and getattr(rec_results[0], "text_lines", None):
-            for line in rec_results[0].text_lines:
-                if line.text.strip():
-                    b = line.bbox  # PolygonBox computed property → [x1,y1,x2,y2]
-                    lines.append((line.text, (int(b[0]), int(b[1]), int(b[2]), int(b[3]))))
-
-        print(f"[surya] {len(lines)} line(s) extracted:", flush=True)
-        for t, bb in lines:
-            print(f"  {bb} -> {t!r}", flush=True)
-    else:
-        from surya.ocr import run_ocr
-        results = run_ocr(
-            [image], [["ja", "en"]],
-            _det_model, _det_processor, _rec_model, _rec_processor,
-        )
-        if results and results[0].text_lines:
-            for line in results[0].text_lines:
-                if line.text.strip():
-                    b = line.bbox
-                    lines.append((line.text, (int(b[0]), int(b[1]), int(b[2]), int(b[3]))))
-
-    return lines
+        words.append((
+            txt,
+            (int(data["left"][i]), int(data["top"][i]),
+             int(data["width"][i]), int(data["height"][i])),
+        ))
+    return words
 
 
 def _get_sensitive_words(text: str) -> List[str]:
@@ -376,20 +90,18 @@ def _get_sensitive_words(text: str) -> List[str]:
     words: List[str] = []
     for det in detections:
         words.extend(det.mask_text.split())
-    result = list(set(w for w in words if w.strip()))
-    print(f"[surya] sensitive words detected: {result}", flush=True)
-    return result
+    return list(set(w for w in words if w.strip()))
 
 
-def _find_sensitive_boxes(
-    lines: List[Tuple[str, Tuple[int, int, int, int]]],
+def _find_sensitive_word_boxes(
+    words: List[Tuple[str, Tuple[int, int, int, int]]],
     sensitive: List[str],
 ) -> List[Tuple[int, int, int, int]]:
-    """Return bboxes of lines that contain any sensitive word."""
+    """Return (x, y, w, h) boxes of OCR words that match any sensitive term."""
     boxes: List[Tuple[int, int, int, int]] = []
-    for text, bbox in lines:
+    for txt, bbox in words:
         for sw in sensitive:
-            if sw in text or text in sw:
+            if sw and (sw in txt or txt in sw):
                 boxes.append(bbox)
                 break
     return boxes
@@ -398,27 +110,22 @@ def _find_sensitive_boxes(
 def _blackout_regions(image, boxes: List[Tuple[int, int, int, int]]):
     from PIL import ImageDraw
     draw = ImageDraw.Draw(image)
-    for x1, y1, x2, y2 in boxes:
-        if x2 > x1 and y2 > y1:
-            draw.rectangle([x1, y1, x2, y2], fill="black")
+    for x, y, w, h in boxes:
+        if w > 0 and h > 0:
+            draw.rectangle([x, y, x + w, y + h], fill="black")
     return image
 
 
 def process_image(src: Path) -> Path:
-    """Run surya OCR and black out sensitive regions."""
-    try:
-        from PIL import Image
-    except ImportError as e:
-        raise RuntimeError(f"Pillow が必要です: {e}") from e
-
+    """Read image, OCR it, black out sensitive word boxes, and save a copy."""
     img = Image.open(src).convert("RGB")
-    lines = _ocr_lines(img)
+    words = _ocr_words(img)
 
-    if lines:
-        full_text = " ".join(t for t, _ in lines)
+    if words:
+        full_text = " ".join(t for t, _ in words)
         sensitive = _get_sensitive_words(full_text)
         if sensitive:
-            boxes = _find_sensitive_boxes(lines, sensitive)
+            boxes = _find_sensitive_word_boxes(words, sensitive)
             img = _blackout_regions(img, boxes)
 
     out = make_output_path(src)
@@ -427,16 +134,16 @@ def process_image(src: Path) -> Path:
 
 
 def process_image_data(img, mode: str = "blackout") -> "Image":
-    """Process a PIL Image object and return masked Image."""
+    """Process a PIL Image object and return the masked Image."""
     img = img.convert("RGB")
-    lines = _ocr_lines(img)
-    if not lines:
+    words = _ocr_words(img)
+    if not words:
         return img
 
-    full_text = " ".join(t for t, _ in lines)
+    full_text = " ".join(t for t, _ in words)
     sensitive = _get_sensitive_words(full_text)
     if not sensitive:
         return img
 
-    boxes = _find_sensitive_boxes(lines, sensitive)
+    boxes = _find_sensitive_word_boxes(words, sensitive)
     return _blackout_regions(img, boxes)
