@@ -122,13 +122,13 @@ if exist "%TESSERACT_EXE%" (
 set TESS_URL=https://github.com/UB-Mannheim/tesseract/releases/download/v5.5.0.20241111/tesseract-ocr-w64-setup-5.5.0.20241111.exe
 set TESS_INSTALLER=%TEMP%\tesseract-setup.exe
 echo Downloading Tesseract installer (~60MB)...
-powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri '%TESS_URL%' -OutFile '%TESS_INSTALLER%'"
-if errorlevel 1 (
+curl.exe -L --retry 3 --ssl-no-revoke -o "%TESS_INSTALLER%" "%TESS_URL%" 2>nul
+if not exist "%TESS_INSTALLER%" (
     echo [WARNING] Failed to download Tesseract.
-    echo          Please install manually from:
-    echo          https://github.com/UB-Mannheim/tesseract/wiki
-    echo          Install to: %TESSERACT_DIR%
-    echo          Include jpn language data during installation.
+    echo          Please install manually:
+    echo            1. Download from https://github.com/UB-Mannheim/tesseract/wiki
+    echo            2. Run installer with "Japanese" language option checked
+    echo            3. Change install path to: %TESSERACT_DIR%
     goto :tesseract_done
 )
 echo Installing Tesseract to %TESSERACT_DIR%...
@@ -141,12 +141,12 @@ if not exist "%TESSERACT_EXE%" (
 echo Downloading Japanese language data...
 set TESSDATA_DIR=%TESSERACT_DIR%\tessdata
 set TESSDATA_BASE=https://github.com/tesseract-ocr/tessdata/raw/main
-powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri '%TESSDATA_BASE%/jpn.traineddata' -OutFile '%TESSDATA_DIR%\jpn.traineddata'"
+curl.exe -L --retry 3 --ssl-no-revoke -o "%TESSDATA_DIR%\jpn.traineddata" "%TESSDATA_BASE%/jpn.traineddata" 2>nul
 if errorlevel 1 echo [WARNING] Failed to download jpn.traineddata.
-powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri '%TESSDATA_BASE%/jpn_vert.traineddata' -OutFile '%TESSDATA_DIR%\jpn_vert.traineddata'"
+curl.exe -L --retry 3 --ssl-no-revoke -o "%TESSDATA_DIR%\jpn_vert.traineddata" "%TESSDATA_BASE%/jpn_vert.traineddata" 2>nul
 if errorlevel 1 echo [WARNING] Failed to download jpn_vert.traineddata.
 if not exist "%TESSDATA_DIR%\script" mkdir "%TESSDATA_DIR%\script"
-powershell -NoProfile -Command "[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -UseBasicParsing -Uri '%TESSDATA_BASE%/script/Japanese.traineddata' -OutFile '%TESSDATA_DIR%\script\Japanese.traineddata'"
+curl.exe -L --retry 3 --ssl-no-revoke -o "%TESSDATA_DIR%\script\Japanese.traineddata" "%TESSDATA_BASE%/script/Japanese.traineddata" 2>nul
 if errorlevel 1 echo [WARNING] Failed to download script/Japanese.traineddata.
 echo Tesseract installed: %TESSERACT_EXE%
 :tesseract_done
