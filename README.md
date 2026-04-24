@@ -1,9 +1,23 @@
 # pymasking — 個人情報マスキングツール
 
 文書・画像・クリップボードに含まれる個人情報を自動検出してマスキングします。  
-CLI と Web UI の両方で動作します。
+Web UI と CLI の両方で動作します。Windows 専用・完全スタンドアロン動作（インターネット不要）。
 
-![操作デモ](docs/demo.gif)
+---
+
+## デモ
+
+### テキストタブ — テキストを直接入力してマスキング
+
+![テキストマスキングデモ](doc/demo_text.gif)
+
+### ファイルタブ — ドラッグ＆ドロップでファイルをマスキング
+
+![ファイルマスキングデモ](doc/demo_file.gif)
+
+### クリップボード画像タブ — スクリーンショットをそのままマスキング
+
+![クリップボード画像マスキングデモ](doc/demo_clipboard.gif)
 
 ---
 
@@ -11,12 +25,9 @@ CLI と Web UI の両方で動作します。
 
 | 項目 | 要件 |
 |------|------|
-| OS | Windows 11 (64bit) |
+| OS | Windows 10 / 11（64bit） |
 | ネットワーク | セットアップ時のみ必要（初回のみ） |
-| Tesseract | 画像OCRを使う場合のみ別途インストール |
-
-> **Tesseract（画像マスキングを使う場合）**  
-> [UB Mannheim 版インストーラー](https://github.com/UB-Mannheim/tesseract/wiki) で `jpn` 言語データを含めてインストールし、`PATH` を通してください。
+| ディスク | 約 2 GB（Python ランタイム＋モデル込み） |
 
 ---
 
@@ -35,9 +46,10 @@ CLI と Web UI の両方で動作します。
 
 ```
 %LOCALAPPDATA%\pymasking\
-├── setup_model.bat
-├── start_cli.bat
-├── start_web.bat
+├── setup_model.bat      ← 初回セットアップ
+├── start_web.bat        ← Web UI 起動
+├── mask.bat             ← CLI マスキング
+├── unmask.bat           ← CLI 復号
 ├── pymasking\
 ├── data\
 └── scripts\
@@ -50,13 +62,14 @@ CLI と Web UI の両方で動作します。
 
 | ステップ | 内容 | 目安時間 |
 |---------|------|---------|
-| 1 | Python 3.12.10 ランタイムをダウンロード・展開 | 1〜2 分 |
+| 1 | Python 3.12.10 組み込みランタイムをダウンロード・展開 | 1〜2 分 |
 | 2 | pip をインストール | 1 分 |
-| 3 | 依存ライブラリをインストール | 3〜5 分 |
-| 4 | spaCy / ja-ginza をインストール | 2〜3 分 |
-| 5 | SudachiDict_full をインストール（約 800MB） | 10〜20 分 |
-| 6 | GiNZA モデルをコピー | 1〜2 分 |
-| 7 | JMnedict 姓名データを取得（約 30MB） | 1〜2 分 |
+| 3 | 依存ライブラリをインストール（Flask, PyMuPDF, Pillow 等） | 3〜5 分 |
+| 4 | SudachiDict_full をインストール（約 800 MB、高精度辞書） | 10〜20 分 |
+| 5 | JMnedict 姓名データを取得（約 30 MB） | 1〜2 分 |
+| 6 | Tesseract OCR v5.5.0 ＋日本語言語データをインストール | 2〜5 分 |
+| 7 | 旧バージョンのモデルキャッシュを削除（あれば） | 数秒 |
+| 8 | 旧バージョンのパッケージをアンインストール（あれば） | 数秒 |
 
 完了するとデスクトップに **`pymasking.lnk`** ショートカットが作成されます。
 
@@ -69,16 +82,21 @@ CLI と Web UI の両方で動作します。
 デスクトップの **`pymasking`** ショートカットをダブルクリック、  
 またはインストールフォルダの `start_web.bat` をダブルクリックします。
 
-ブラウザで http://127.0.0.1:59631 が開きます。  
+```bat
+start_web.bat           ← ポート 59631 で起動（デフォルト）
+start_web.bat 8080      ← ポート指定
+```
+
+ブラウザで http://127.0.0.1:59631 が自動的に開きます。  
 **ブラウザのタブ・ウィンドウを閉じるとサーバーも自動終了します。**
 
 ### CLI
 
 ```bat
-start_cli.bat mask report.docx
-start_cli.bat mask report.docx --mode pigpen
-start_cli.bat mask --clipboard
-start_cli.bat unmask report_masked.txt
+mask.bat report.docx
+mask.bat report.docx --mode pigpen
+mask.bat --clipboard
+unmask.bat report_masked.txt
 ```
 
 ---
@@ -89,8 +107,8 @@ start_cli.bat unmask report_masked.txt
 |------|---------|
 | `.txt` `.csv` `.json` `.xml` `.md` `.log` | テキスト置換 |
 | `.docx` `.xlsx` `.pptx` | テキスト置換（書式保持） |
-| `.pdf` | テキスト位置を黒矩形で塗りつぶし |
-| `.jpg` `.jpeg` `.png` | OCR で検出 → 黒矩形で塗りつぶし |
+| `.pdf` | テキスト座標を検出 → 黒矩形で塗りつぶし |
+| `.jpg` `.jpeg` `.png` `.bmp` | Tesseract OCR で検出 → 黒矩形で塗りつぶし |
 
 ---
 
@@ -100,15 +118,15 @@ start_cli.bat unmask report_masked.txt
 |------|--------|------|
 | 伏字（デフォルト） | `●●●` | 不可 |
 | 一意性保持 | `人物001` | 不可 |
-| ピッグペン暗号 | `【人物:⊞⊟⊠⊡:】` | 可能（`unmask` コマンド） |
+| ピッグペン暗号 | `【人物:⊞⊟⊠⊡:】` | 可能（`unmask.bat` で復号） |
 
-> 画像・PDF は方式に関わらず常に視覚的塗りつぶしになります。
+> 画像・PDF は方式に関わらず常に視覚的塗りつぶし（黒矩形）になります。
 
 ---
 
 ## 検出カテゴリ
 
-人物名 / 組織名 / 住所 / メールアドレス / 電話番号 / 日付 / 金額 / SNSアカウント / 特許番号 / シリアル番号 / 型番
+人物名 / 組織名 / 住所 / メールアドレス / 電話番号 / 日付 / 金額 / SNS アカウント / 特許番号 / シリアル番号 / 型番
 
 ---
 
