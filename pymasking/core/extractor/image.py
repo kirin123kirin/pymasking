@@ -89,6 +89,39 @@ def _apply_surya_compat_patches() -> None:
     except Exception:
         pass
 
+    # 4. Qwen2_5_VisionRotaryEmbedding stores inv_freq as a plain attribute (not a
+    #    registered buffer).  When transformers 5.x creates the model on the "meta"
+    #    device for lazy loading, inv_freq becomes a meta tensor and is never moved
+    #    to CPU by model.to(device).  Recompute on first forward call if on meta.
+    try:
+        from surya.common.surya.encoder import (  # noqa: F401
+            Qwen2_5_VisionRotaryEmbedding as _VRot,
+        )
+        if not getattr(_VRot.__init__, '__pymasking_patched__', False):
+            _orig_vrot_init = _VRot.__init__
+
+            def _patched_vrot_init(self, dim: int, theta: float = 10000.0) -> None:
+                _orig_vrot_init(self, dim, theta)
+                self._rot_dim = dim
+                self._rot_theta = theta
+            _patched_vrot_init.__pymasking_patched__ = True
+            _VRot.__init__ = _patched_vrot_init
+
+        def _patched_vrot_forward(self, seqlen: int):
+            inv_freq = self.inv_freq
+            if hasattr(inv_freq, 'device') and inv_freq.device.type == 'meta':
+                dim = getattr(self, '_rot_dim', inv_freq.shape[0] * 2)
+                theta = getattr(self, '_rot_theta', 10000.0)
+                inv_freq = 1.0 / (theta ** (
+                    torch.arange(0, dim, 2, dtype=torch.float32) / dim
+                ))
+                self.inv_freq = inv_freq
+            seq = torch.arange(seqlen, device='cpu', dtype=inv_freq.dtype)
+            return torch.outer(seq, inv_freq)
+        _VRot.forward = _patched_vrot_forward
+    except Exception:
+        pass
+
 
 def _load_models() -> None:
     global _det_model, _det_processor, _rec_model, _rec_processor, _surya_new_api
