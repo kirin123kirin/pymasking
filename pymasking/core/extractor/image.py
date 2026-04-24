@@ -153,19 +153,55 @@ def _ocr_lines(image) -> List[Tuple[str, Tuple[int, int, int, int]]]:
         #   RecognitionPredictor([image], langs, bboxes=[[x1,y1,x2,y2],...])
         #       → List[OCRResult], each with .text_lines (TextLine list)
 
-        # Step 1: detect text line bboxes
-        det_results = _det_model([image])
-        if not det_results or not getattr(det_results[0], "bboxes", None):
-            print(f"[surya] detection: 0 bboxes  image_size={image.size}", flush=True)
+        # Step 1: detect text line bboxes.
+        # Pad non-square images to a square with white before detection to prevent
+        # aspect-ratio distortion: DetectionPredictor always stretches to 512x512,
+        # which can cause missed detections on wide/tall images.
+        orig_w, orig_h = image.size
+        if orig_w != orig_h:
+            from PIL import ImageOps as _ImageOps
+            max_dim = max(orig_w, orig_h)
+            det_image = _ImageOps.pad(image, (max_dim, max_dim),
+                                      color=(255, 255, 255), centering=(0, 0))
+        else:
+            det_image = image
+
+        det_results = _det_model([det_image], include_maps=True)
+        r0 = det_results[0] if det_results else None
+        raw_bboxes = getattr(r0, "bboxes", None) or []
+
+        # Diagnostic: print heatmap signal even when no bboxes found.
+        hm = getattr(r0, "heatmap", None) if r0 else None
+        if hm is not None:
+            import numpy as _np
+            hm_arr = _np.asarray(hm)
+            hm_max = int(hm_arr.max())
+            print(f"[surya] detection: {len(raw_bboxes)} bbox(es)"
+                  f"  image_size={image.size}"
+                  f"  heatmap_max={hm_max}/255", flush=True)
+        else:
+            print(f"[surya] detection: {len(raw_bboxes)} bbox(es)"
+                  f"  image_size={image.size}", flush=True)
+
+        if not raw_bboxes:
             return lines
 
-        raw_bboxes = det_results[0].bboxes
-        n_bboxes = len(raw_bboxes)
-        print(f"[surya] detection: {n_bboxes} bbox(es)  image_size={image.size}", flush=True)
+        # Clip bboxes from padded-image space back to original image bounds.
+        bbox_coords = []
+        for b in raw_bboxes:
+            x1, y1, x2, y2 = b.bbox
+            x1 = max(0.0, min(float(x1), orig_w))
+            y1 = max(0.0, min(float(y1), orig_h))
+            x2 = max(0.0, min(float(x2), orig_w))
+            y2 = max(0.0, min(float(y2), orig_h))
+            if x2 > x1 and y2 > y1:
+                bbox_coords.append([x1, y1, x2, y2])
 
-        # Step 2: recognise text (pass full image + pre-computed bboxes)
+        if not bbox_coords:
+            return lines
+
+        # Step 2: recognise text (pass original image + clipped bboxes)
         # bboxes format: List[List[List[int]]] — one list of boxes per image
-        bbox_coords = [list(b.bbox) for b in raw_bboxes]  # [[x1,y1,x2,y2], ...]
         rec_results = _rec_model([image], [["ja", "en"]], bboxes=[bbox_coords])
 
         # Step 3: extract text from OCRResult.text_lines
