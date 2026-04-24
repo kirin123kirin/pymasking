@@ -59,6 +59,36 @@ def _apply_surya_compat_patches() -> None:
     except Exception:
         pass
 
+    # 3. SuryaModel missing post_init() call + outdated _tied_weights_keys format.
+    #    transformers 5.x requires all_tied_weights_keys dict attribute and dict-format
+    #    _tied_weights_keys; surya's tie_weights uses removed _tie_or_clone_weights helper.
+    try:
+        from surya.common.surya import SuryaModel
+        if isinstance(getattr(SuryaModel, '_tied_weights_keys', None), list):
+            SuryaModel._tied_weights_keys = {"lm_head.weight": "embedder.token_embed.weight"}
+        if not getattr(SuryaModel.__init__, '__pymasking_patched__', False):
+            _orig_surya_init = SuryaModel.__init__
+
+            def _patched_surya_init(self, *args, **kwargs):
+                _orig_surya_init(self, *args, **kwargs)
+                if not hasattr(self, 'all_tied_weights_keys'):
+                    self.all_tied_weights_keys = {
+                        "lm_head.weight": "embedder.token_embed.weight",
+                    }
+            _patched_surya_init.__pymasking_patched__ = True
+            SuryaModel.__init__ = _patched_surya_init
+
+        def _patched_surya_tie_weights(self, missing_keys=None, recompute_mapping=True):
+            try:
+                self.lm_head.weight = self.embedder.token_embed.weight
+                if missing_keys is not None:
+                    missing_keys.discard("lm_head.weight")
+            except Exception:
+                pass
+        SuryaModel.tie_weights = _patched_surya_tie_weights
+    except Exception:
+        pass
+
 
 def _load_models() -> None:
     global _det_model, _det_processor, _rec_model, _rec_processor, _surya_new_api
