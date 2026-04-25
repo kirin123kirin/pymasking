@@ -25,11 +25,10 @@ dependencies = [
     "python-pptx>=0.6",
     "chardet>=4.0",
     "python-dateutil>=2.8",
+    "ja-ginza>=5.0",
+    "spacy>=3.0",
+    "pytesseract",
 ]
-
-[project.optional-dependencies]
-nlp = ["ja-ginza>=5.0", "spacy>=3.0"]
-ocr = ["pytesseract"]
 
 [project.scripts]
 masking = "pymasking.cli.main:launch"
