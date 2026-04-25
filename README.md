@@ -1,7 +1,7 @@
 # pymasking — 個人情報マスキングツール
 
 文書・画像・クリップボードに含まれる個人情報を自動検出してマスキングします。  
-Web UI と CLI の両方で動作します。Windows 専用・完全スタンドアロン動作（インターネット不要）。
+Web UI と CLI の両方で動作します。
 
 ---
 
@@ -26,52 +26,40 @@ Web UI と CLI の両方で動作します。Windows 専用・完全スタンド
 | 項目 | 要件 |
 |------|------|
 | OS | Windows 10 / 11（64bit） |
-| ネットワーク | セットアップ時のみ必要（初回のみ） |
-| ディスク | 約 2 GB（Python ランタイム＋モデル込み） |
+| Python | 3.9 以上 |
 
 ---
 
 ## インストール
 
-### 1. ZIP を展開する
-
-以下のパスに ZIP の中身を展開してください（フォルダ名含む）：
-
-```
-%LOCALAPPDATA%\pymasking\
+```bash
+pip install pymasking
 ```
 
-エクスプローラーのアドレスバーに上記を貼り付けると開けます。  
-展開後のフォルダ構成：
+### Tesseract OCR バイナリのインストール（画像・PDF の OCR マスキングに必要）
+
+`pip install` だけでは OCR 機能は使えません。Tesseract OCR バイナリを別途インストールしてください。
+
+**1. インストーラーをダウンロード**
+
+以下のページから Windows 用インストーラーを取得します。
+
+> https://github.com/UB-Mannheim/tesseract/wiki
+
+**2. 日本語データを含めてインストール**
+
+インストーラー実行中、「Additional language data」のリストで  
+**「Japanese (jpn)」** にチェックを入れてからインストールします。
+
+**3. PATH を通す**
+
+インストール完了後、Tesseract のインストール先フォルダをシステムの PATH 環境変数に追加します。
 
 ```
-%LOCALAPPDATA%\pymasking\
-├── setup_model.bat      ← 初回セットアップ
-├── start_web.bat        ← Web UI 起動
-├── mask.bat             ← CLI マスキング
-├── unmask.bat           ← CLI 復号
-├── pymasking\
-├── data\
-└── scripts\
+C:\Program Files\Tesseract-OCR
 ```
 
-### 2. セットアップを実行する
-
-`setup_model.bat` をダブルクリックして実行します。  
-以下を自動的に行います（初回のみ、ネットワーク接続が必要）：
-
-| ステップ | 内容 | 目安時間 |
-|---------|------|---------|
-| 1 | Python 3.12.10 組み込みランタイムをダウンロード・展開 | 1〜2 分 |
-| 2 | pip をインストール | 1 分 |
-| 3 | 依存ライブラリをインストール（Flask, PyMuPDF, Pillow 等） | 3〜5 分 |
-| 4 | SudachiDict_full をインストール（約 800 MB、高精度辞書） | 10〜20 分 |
-| 5 | JMnedict 姓名データを取得（約 30 MB） | 1〜2 分 |
-| 6 | Tesseract OCR v5.5.0 ＋日本語言語データをインストール | 2〜5 分 |
-| 7 | 旧バージョンのモデルキャッシュを削除（あれば） | 数秒 |
-| 8 | 旧バージョンのパッケージをアンインストール（あれば） | 数秒 |
-
-完了するとデスクトップに **`pymasking.lnk`** ショートカットが作成されます。
+> **確認方法:** コマンドプロンプトで `tesseract --version` が実行できれば完了です。
 
 ---
 
@@ -79,24 +67,19 @@ Web UI と CLI の両方で動作します。Windows 専用・完全スタンド
 
 ### Web UI（推奨）
 
-デスクトップの **`pymasking`** ショートカットをダブルクリック、  
-またはインストールフォルダの `start_web.bat` をダブルクリックします。
-
-```bat
-start_web.bat           ← ポート 59631 で起動（デフォルト）
-start_web.bat 8080      ← ポート指定
+```bash
+masking
 ```
 
-ブラウザで http://127.0.0.1:59631 が自動的に開きます。  
+ブラウザで http://127.0.0.1:55963 が自動的に開きます。  
 **ブラウザのタブ・ウィンドウを閉じるとサーバーも自動終了します。**
 
 ### CLI
 
-```bat
-mask.bat report.docx
-mask.bat report.docx --mode pigpen
-mask.bat --clipboard
-unmask.bat report_masked.txt
+```bash
+python -m pymasking.cli.main mask report.docx
+python -m pymasking.cli.main mask report.docx --mode pigpen
+python -m pymasking.cli.main unmask report_masked.txt
 ```
 
 ---
@@ -177,7 +160,7 @@ unmask.bat report_masked.txt
 |------|--------|------|
 | 伏字（デフォルト） | `●●●` | 不可 |
 | 一意性保持 | `人物001` | 不可 |
-| ピッグペン暗号 | `【人物:⊞⊟⊠⊡:】` | 可能（`unmask.bat` または **復号化実行** ボタンで復号） |
+| ピッグペン暗号 | `【人物:⊞⊟⊠⊡:】` | 可能（**復号化実行** ボタンで復号） |
 
 > 画像・PDF は方式に関わらず常に視覚的塗りつぶし（黒矩形）になります。
 
@@ -191,21 +174,9 @@ unmask.bat report_masked.txt
 
 ## カスタム辞書
 
-`data\dict\custom_dict.txt` にタブ区切りで追加すると独自の固有名詞を検出できます：
+`pymasking/data/dict/custom_dict.txt` にタブ区切りで追加すると独自の固有名詞を検出できます：
 
 ```
 山田太郎	person
 株式会社サンプル	org
 ```
-
----
-
-## アンインストール
-
-以下のフォルダを削除するだけです：
-
-```
-%LOCALAPPDATA%\pymasking\
-```
-
-デスクトップの `pymasking.lnk` も手動で削除してください。
