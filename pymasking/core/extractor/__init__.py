@@ -3,13 +3,6 @@
 from pathlib import Path
 from typing import Union
 
-_PLAINTEXT_EXTS = {
-    ".txt", ".csv", ".tsv", ".json", ".xml", ".html", ".htm",
-    ".md", ".rst", ".yaml", ".yml", ".toml", ".ini", ".cfg",
-    ".conf", ".log", ".py", ".js", ".ts", ".java", ".c", ".cpp",
-    ".h", ".cs", ".sql", ".sh", ".bat", ".cmd", ".ps1",
-}
-
 _IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".bmp"}
 
 _UNMASK_EXTS = {

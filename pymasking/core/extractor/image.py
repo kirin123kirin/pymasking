@@ -1,6 +1,5 @@
 """画像ファイルの視覚的マスキング処理（Tesseract OCR で検出 → 黒塗り）。"""
 
-import logging
 import os
 from pathlib import Path
 from typing import List, Tuple
@@ -9,8 +8,6 @@ from PIL import Image
 
 from ..detector import detect_all, resolve_overlaps
 from . import make_output_path
-
-_log = logging.getLogger(__name__)
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
