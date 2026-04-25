@@ -9,12 +9,14 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: "Meiryo", "メイリオ", "Segoe UI", sans-serif;
-      background: #f4f6f8;
+      background: #fdf6f0;
       color: #333;
       line-height: 1.8;
     }
+
+    /* ── ヘッダー ── */
     header {
-      background: #1a1a2e;
+      background: #7c3a00;
       color: #fff;
       padding: 20px 32px;
       display: flex;
@@ -30,29 +32,97 @@
       padding: 0 20px 60px;
     }
 
+    /* ── TOC ── */
+    #toc {
+      background: #fff8f3;
+      border: 1px solid #f4a261;
+      border-radius: 10px;
+      padding: 20px 28px;
+      margin-bottom: 28px;
+    }
+    #toc h2 {
+      font-size: 1rem;
+      color: #7c3a00;
+      margin-bottom: 10px;
+      border-left: none;
+      padding-left: 0;
+    }
+    #toc ol {
+      padding-left: 1.4em;
+    }
+    #toc ol li {
+      margin-bottom: 4px;
+      font-size: .95rem;
+    }
+    #toc a {
+      color: #c4622d;
+      text-decoration: none;
+    }
+    #toc a:hover { text-decoration: underline; }
+
+    /* ── セクション共通 ── */
     section {
       background: #fff;
       border-radius: 10px;
       box-shadow: 0 2px 10px rgba(0,0,0,.08);
-      padding: 32px 36px;
       margin-bottom: 28px;
+      overflow: hidden;
     }
 
-    h2 {
-      font-size: 1.25rem;
-      color: #1a1a2e;
-      border-left: 5px solid #4361ee;
+    /* ── 折り畳みヘッダー ── */
+    .sec-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 28px;
+      cursor: pointer;
+      user-select: none;
+      background: #fff;
+      transition: background .15s;
+    }
+    .sec-header:hover { background: #fff8f3; }
+    .sec-header h2 {
+      font-size: 1.2rem;
+      color: #7c3a00;
+      border-left: 5px solid #f4a261;
       padding-left: 12px;
-      margin-bottom: 20px;
+      margin-bottom: 0;
+    }
+    .chevron {
+      width: 20px; height: 20px;
+      fill: none;
+      stroke: #c4622d;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      transition: transform .25s ease;
+      flex-shrink: 0;
+    }
+    .sec-header[aria-expanded="true"] .chevron {
+      transform: rotate(180deg);
     }
 
-    ol {
-      padding-left: 1.5em;
+    /* 折り畳みボディ */
+    .sec-body {
+      padding: 0 28px 24px;
     }
-    ol li {
-      margin-bottom: 10px;
-      font-size: 1rem;
+    .sec-body[hidden] { display: none; }
+
+    /* ── デモセクション（折り畳みなし） ── */
+    .demo-header {
+      padding: 18px 28px 4px;
     }
+    .demo-header h2 {
+      font-size: 1.2rem;
+      color: #7c3a00;
+      border-left: 5px solid #f4a261;
+      padding-left: 12px;
+    }
+    .demo-body { padding: 16px 28px 28px; }
+
+    /* ── リスト ── */
+    ol { padding-left: 1.5em; }
+    ol li { margin-bottom: 10px; font-size: 1rem; }
     ol li:last-child { margin-bottom: 0; }
 
     .note {
@@ -62,21 +132,20 @@
       padding-left: 1em;
     }
 
-    .demo-item {
-      margin-bottom: 32px;
-    }
+    /* ── デモ GIF ── */
+    .demo-item { margin-bottom: 32px; }
     .demo-item:last-child { margin-bottom: 0; }
     .demo-label {
       font-size: 1rem;
       font-weight: 600;
-      color: #1a1a2e;
+      color: #7c3a00;
       margin-bottom: 10px;
       display: flex;
       align-items: center;
       gap: 8px;
     }
     .demo-label span.num {
-      background: #4361ee;
+      background: #f4a261;
       color: #fff;
       border-radius: 50%;
       width: 26px; height: 26px;
@@ -88,9 +157,10 @@
       display: block;
       max-width: 100%;
       border-radius: 8px;
-      border: 1px solid #dee2e6;
+      border: 1px solid #f0d5c0;
     }
 
+    /* ── インストールステップ ── */
     .install-step {
       display: flex;
       gap: 16px;
@@ -98,7 +168,7 @@
     }
     .install-step:last-child { margin-bottom: 0; }
     .step-num {
-      background: #4361ee;
+      background: #f4a261;
       color: #fff;
       border-radius: 50%;
       width: 32px; height: 32px;
@@ -110,9 +180,10 @@
     }
     .step-body { flex: 1; }
     .step-body p { margin-bottom: 4px; }
+
     code {
-      background: #eef2ff;
-      color: #3451d1;
+      background: #fff3e8;
+      color: #a0440a;
       border-radius: 4px;
       padding: 2px 6px;
       font-family: "Consolas", "Courier New", monospace;
@@ -129,82 +200,130 @@
 
 <main>
 
-  <!-- 起動方法 -->
-  <section>
-    <h2>起動方法</h2>
+  <!-- TOC -->
+  <nav id="toc">
+    <h2>目次</h2>
     <ol>
-      <li><code>pymasking.lnk</code> をダブルクリックする</li>
-      <li>コマンドプロンプト（黒い画面）が起動し、自動的にブラウザが起動する</li>
+      <li><a href="#sec-install">インストール方法</a></li>
+      <li><a href="#sec-start">起動方法</a></li>
+      <li><a href="#sec-stop">終了方法</a></li>
+      <li><a href="#sec-demo">データマスキング 3 種</a></li>
     </ol>
-  </section>
+  </nav>
 
-  <!-- 終了方法 -->
-  <section>
-    <h2>終了方法</h2>
-    <ol>
-      <li>ブラウザを閉じる</li>
-      <li>
-        コマンドプロンプト（黒い画面）は 15 秒後に自動的に終了する
-        <p class="note">終了しない場合は <code>Ctrl + C</code> を連打して終了させる</p>
-      </li>
-    </ol>
-  </section>
-
-  <!-- データマスキング3種 -->
-  <section>
-    <h2>データマスキング 3 種</h2>
-
-    <div class="demo-item">
-      <div class="demo-label">
-        <span class="num">1</span>テキストマスキング
+  <!-- インストール方法（折り畳み・デフォルト閉） -->
+  <section id="sec-install">
+    <button class="sec-header" aria-expanded="false" aria-controls="body-install"
+            onclick="toggle(this)">
+      <h2>インストール方法</h2>
+      <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="sec-body" id="body-install" hidden>
+      <div class="install-step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <p><code>pymasking.7z</code> をダウンロードする</p>
+        </div>
       </div>
-      <img src="./doc/demo_text.gif" alt="テキストマスキング デモ">
-    </div>
-
-    <div class="demo-item">
-      <div class="demo-label">
-        <span class="num">2</span>ファイルマスキング
+      <div class="install-step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <p>ダウンロードした <code>pymasking.7z</code> を Windows 11 の標準の解凍方法で展開する</p>
+          <p>展開先に以下のパスを貼り付ける：</p>
+          <p><code>%LOCALAPPDATA%\pymasking</code></p>
+        </div>
       </div>
-      <img src="./doc/demo_file.gif" alt="ファイルマスキング デモ">
-    </div>
-
-    <div class="demo-item">
-      <div class="demo-label">
-        <span class="num">3</span>クリップボードマスキング
+      <div class="install-step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <p>pymasking のショートカットをデスクトップにコピーする</p>
+          <p><code>%LOCALAPPDATA%\pymasking\pymasking.lnk</code> をデスクトップにコピーする</p>
+        </div>
       </div>
-      <img src="./doc/demo_clipboard.gif" alt="クリップボードマスキング デモ">
     </div>
   </section>
 
-  <!-- インストール方法 -->
-  <section>
-    <h2>インストール方法</h2>
-
-    <div class="install-step">
-      <div class="step-num">1</div>
-      <div class="step-body">
-        <p><code>pymasking.7z</code> をダウンロードする</p>
-      </div>
+  <!-- 起動方法（折り畳み・デフォルト閉） -->
+  <section id="sec-start">
+    <button class="sec-header" aria-expanded="false" aria-controls="body-start"
+            onclick="toggle(this)">
+      <h2>起動方法</h2>
+      <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="sec-body" id="body-start" hidden>
+      <ol>
+        <li><code>pymasking.lnk</code> をダブルクリックする</li>
+        <li>コマンドプロンプト（黒い画面）が起動し、自動的にブラウザが起動する</li>
+      </ol>
     </div>
+  </section>
 
-    <div class="install-step">
-      <div class="step-num">2</div>
-      <div class="step-body">
-        <p>ダウンロードした <code>pymasking.7z</code> を Windows 11 の標準の解凍方法で展開する</p>
-        <p>展開先に以下のパスを貼り付ける：</p>
-        <p><code>%LOCALAPPDATA%\pymasking</code></p>
-      </div>
+  <!-- 終了方法（折り畳み・デフォルト閉） -->
+  <section id="sec-stop">
+    <button class="sec-header" aria-expanded="false" aria-controls="body-stop"
+            onclick="toggle(this)">
+      <h2>終了方法</h2>
+      <svg class="chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="sec-body" id="body-stop" hidden>
+      <ol>
+        <li>ブラウザを閉じる</li>
+        <li>
+          コマンドプロンプト（黒い画面）は 15 秒後に自動的に終了する
+          <p class="note">終了しない場合は <code>Ctrl + C</code> を連打して終了させる</p>
+        </li>
+      </ol>
     </div>
+  </section>
 
-    <div class="install-step">
-      <div class="step-num">3</div>
-      <div class="step-body">
-        <p>pymasking のショートカットをデスクトップにコピーする</p>
-        <p><code>%LOCALAPPDATA%\pymasking\pymasking.lnk</code> をデスクトップにコピーする</p>
+  <!-- データマスキング3種（折り畳みなし・常時表示） -->
+  <section id="sec-demo">
+    <div class="demo-header">
+      <h2>データマスキング 3 種</h2>
+    </div>
+    <div class="demo-body">
+      <div class="demo-item">
+        <div class="demo-label">
+          <span class="num">1</span>テキストマスキング
+        </div>
+        <img src="./doc/demo_text.gif" alt="テキストマスキング デモ">
+      </div>
+      <div class="demo-item">
+        <div class="demo-label">
+          <span class="num">2</span>ファイルマスキング
+        </div>
+        <img src="./doc/demo_file.gif" alt="ファイルマスキング デモ">
+      </div>
+      <div class="demo-item">
+        <div class="demo-label">
+          <span class="num">3</span>クリップボードマスキング
+        </div>
+        <img src="./doc/demo_clipboard.gif" alt="クリップボードマスキング デモ">
       </div>
     </div>
   </section>
 
 </main>
+
+<script>
+  function toggle(btn) {
+    const bodyId = btn.getAttribute('aria-controls');
+    const body   = document.getElementById(bodyId);
+    const open   = btn.getAttribute('aria-expanded') === 'true';
+    btn.setAttribute('aria-expanded', String(!open));
+    if (open) { body.hidden = true; }
+    else       { body.hidden = false; }
+  }
+
+  // TOCリンクからアンカーへ飛んだ時に折り畳みを自動展開
+  document.querySelectorAll('#toc a').forEach(a => {
+    a.addEventListener('click', () => {
+      const sec = document.querySelector(a.getAttribute('href'));
+      if (!sec) return;
+      const btn = sec.querySelector('.sec-header');
+      if (btn && btn.getAttribute('aria-expanded') === 'false') toggle(btn);
+    });
+  });
+</script>
 </body>
 </html>
