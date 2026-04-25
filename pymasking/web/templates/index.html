@@ -17,16 +17,75 @@
   label { display: block; font-size: .85rem; color: #555; margin-bottom: 4px; }
   textarea { width: 100%; height: 160px; border: 1px solid #cdd; border-radius: 6px;
              padding: 10px; font-size: .9rem; resize: vertical; font-family: inherit; }
-  .row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 12px; }
-  select, input[type=file] { padding: 7px 10px; border: 1px solid #cdd; border-radius: 6px;
-                              font-size: .9rem; background: #fff; }
   button { padding: 8px 20px; border: none; border-radius: 6px; font-size: .9rem; cursor: pointer;
-           font-weight: 600; }
-  .btn-primary { background: #4361ee; color: #fff; }
-  .btn-primary:hover { background: #3451d1; }
-  .btn-secondary { background: #e9ecef; color: #333; }
-  .btn-secondary:hover { background: #dee2e6; }
-  .btn-danger  { background: #e63946; color: #fff; }
+           font-weight: 600; transition: background .15s; }
+
+  /* タブ */
+  .tabs { display: flex; gap: 0; border-bottom: 2px solid #dee2e6; margin-bottom: 20px; }
+  .tab { padding: 8px 20px; cursor: pointer; border-radius: 6px 6px 0 0; font-size: .9rem; }
+  .tab.active { background: #4361ee; color: #fff; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* メソッドボタン */
+  .method-label { font-size: .85rem; color: #555; margin-bottom: 6px; }
+  .method-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .btn-method { background: #e9ecef; color: #555; padding: 8px 18px;
+                font-size: .88rem; border: 2px solid transparent; border-radius: 6px; }
+  .btn-method:hover { background: #dee2e6; }
+  .btn-method.sel-mask { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+  .btn-method.sel-decrypt { background: #7209b7; color: #fff; border-color: #7209b7; }
+
+  /* 例示ボックス */
+  .example-box { background: #f0f4ff; border: 1px solid #c5d0f5; border-radius: 6px;
+                 padding: 10px 14px; font-size: .85rem; margin-bottom: 14px; display: none; }
+  .example-box.show { display: block; }
+  .example-label { font-size: .78rem; color: #888; margin-bottom: 3px; }
+
+  /* カテゴリ */
+  .category-box { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;
+                  padding: 12px 16px; margin-bottom: 14px; }
+  .category-box.greyed { opacity: .4; pointer-events: none; }
+  .category-grid { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 6px; }
+  .category-grid label { display: inline-flex; align-items: center; gap: 5px;
+                          font-size: .85rem; color: #333; cursor: pointer; margin: 0; }
+  .category-grid input[type=checkbox] { cursor: pointer; }
+  .option-grid { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 6px; }
+  .option-grid label { display: inline-flex; align-items: center; gap: 5px;
+                        font-size: .85rem; color: #333; cursor: pointer; margin: 0; }
+
+  /* 実行ボタン */
+  .action-row { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
+  .btn-exec { background: #4361ee; color: #fff; min-width: 130px; }
+  .btn-exec:hover:not(:disabled) { background: #3451d1; }
+  .btn-exec:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-unmask-exec { background: #7209b7; color: #fff; min-width: 130px; }
+  .btn-unmask-exec:hover:not(:disabled) { background: #5e0898; }
+  .btn-unmask-exec:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-copy { background: #e9ecef; color: #333; }
+  .btn-copy:hover { background: #dee2e6; }
+
+  /* ファイル/クリップボード ボタン状態 */
+  @keyframes blink-red {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+  }
+  .btn-running  { background: #e63946 !important; color: #fff !important;
+                  animation: blink-red .75s ease-in-out infinite; cursor: not-allowed !important; }
+  .btn-dl-ready { background: #f4a261 !important; color: #fff !important; cursor: pointer !important; }
+  .btn-dl-ready:hover { background: #e0924f !important; }
+
+  /* プログレスバー */
+  .progress-wrap { margin-top: 12px; display: none; }
+  .progress-wrap.show { display: block; }
+  .progress-outer { height: 8px; background: #e9ecef; border-radius: 4px; overflow: hidden; }
+  .progress-inner { height: 100%; background: #4361ee; border-radius: 4px;
+                    transition: width .35s ease; width: 0%; }
+  .progress-inner.done  { background: #f4a261; }
+  .progress-inner.err   { background: #e63946; }
+  .progress-text { font-size: .82rem; color: #666; margin-top: 4px; }
+
+  /* その他 */
   .result-box { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;
                 padding: 12px; font-size: .9rem; white-space: pre-wrap; word-break: break-all;
                 min-height: 60px; max-height: 300px; overflow-y: auto; margin-top: 12px; }
@@ -37,30 +96,16 @@
                 text-align: center; color: #888; cursor: pointer; }
   .paste-zone.over { background: #eef2ff; }
   #paste-preview { max-width: 100%; max-height: 300px; display: none; margin-top: 8px; border-radius: 6px; }
-  .tabs { display: flex; gap: 0; border-bottom: 2px solid #dee2e6; margin-bottom: 20px; }
-  .tab { padding: 8px 20px; cursor: pointer; border-radius: 6px 6px 0 0; font-size: .9rem; }
-  .tab.active { background: #4361ee; color: #fff; }
-  .tab-content { display: none; }
-  .tab-content.active { display: block; }
   .status { font-size: .82rem; color: #666; margin-top: 6px; }
-  .status.ok { color: #2d6a4f; }
+  .status.ok  { color: #2d6a4f; }
   .status.err { color: #e63946; }
-  .category-box { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;
-                  padding: 12px 16px; margin-bottom: 12px; }
-  .category-grid { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 6px; }
-  .category-grid label { display: inline-flex; align-items: center; gap: 5px;
-                          font-size: .85rem; color: #333; cursor: pointer; margin: 0; }
-  .category-grid input[type=checkbox] { cursor: pointer; }
-  .option-grid { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 6px; }
-  .option-grid label { display: inline-flex; align-items: center; gap: 5px;
-                        font-size: .85rem; color: #333; cursor: pointer; margin: 0; }
+  .section-gap { margin-bottom: 14px; }
 </style>
 </head>
 <body>
 <header>🔒 pymasking — 個人情報マスキングツール</header>
 <main>
 
-  <!-- タブ切り替え -->
   <div class="tabs">
     <div class="tab active" onclick="switchTab('text')">テキスト</div>
     <div class="tab" onclick="switchTab('file')">ファイル</div>
@@ -71,44 +116,52 @@
   <div id="tab-text" class="tab-content active">
     <div class="card">
       <h2>テキストマスキング</h2>
-      <div class="row">
-        <div>
-          <label>マスキングの方法</label>
-          <select id="text-mode">
-            <option value="blackout">「●」で塗りつぶす</option>
-            <option value="unique">「氏名1」などの文字に置き換える</option>
-            <option value="pigpen">暗号化(元に戻せるよ)</option>
-          </select>
-        </div>
-        <button class="btn-primary" onclick="maskText()">マスキング実行</button>
-        <button class="btn-secondary" onclick="unmaskText()">暗号化解除（暗号化方式でマスキングされてる場合のみ）</button>
-        <button class="btn-secondary" onclick="copyResult('text-result')">結果をコピー</button>
+
+      <div class="method-label">マスキングの方法</div>
+      <div class="method-bar" id="text-method-bar">
+        <button class="btn-method sel-mask" onclick="selectMethod('text','blackout',this)">伏字（●）</button>
+        <button class="btn-method"          onclick="selectMethod('text','unique',this)">一意性保持</button>
+        <button class="btn-method"          onclick="selectMethod('text','pigpen',this)">ピッグペン暗号</button>
+        <button class="btn-method"          onclick="selectMethod('text','decrypt',this)">復号化</button>
+      </div>
+      <div class="example-box show" id="text-example">
+        <div class="example-label">例)</div>
+        <span id="text-example-body">田中太郎さんの電話番号 090-1234-5678 → <b>●●●</b>さんの電話番号 <b>●●●-●●●●-●●●●</b></span>
       </div>
 
-      <div class="category-box">
+      <div class="category-box section-gap" id="text-cat-box">
         <h3>マスキング対象 <span style="font-size:.8rem;color:#888;font-weight:400">（チェックした種別のみマスク）</span>
-          <button type="button" onclick="setAllCategories('text',true)" style="margin-left:12px;padding:2px 8px;font-size:.78rem;font-weight:400;background:#e9ecef;border:none;border-radius:4px;cursor:pointer">全選択</button>
-          <button type="button" onclick="setAllCategories('text',false)" style="padding:2px 8px;font-size:.78rem;font-weight:400;background:#e9ecef;border:none;border-radius:4px;cursor:pointer">全解除</button>
+          <button type="button" onclick="setAll('text',true)"  style="margin-left:12px;padding:2px 8px;font-size:.78rem;font-weight:400;background:#e9ecef;border:none;border-radius:4px;cursor:pointer">全選択</button>
+          <button type="button" onclick="setAll('text',false)" style="padding:2px 8px;font-size:.78rem;font-weight:400;background:#e9ecef;border:none;border-radius:4px;cursor:pointer">全解除</button>
         </h3>
         <div class="category-grid" id="text-categories">
-          <label><input type="checkbox" value="人物" checked> 氏名</label>
-          <label><input type="checkbox" value="組織" checked> 組織</label>
-          <label><input type="checkbox" value="住所" checked> 住所</label>
-          <label><input type="checkbox" value="日付" checked> 日付</label>
-          <label><input type="checkbox" value="電話" checked> 電話番号</label>
+          <label><input type="checkbox" value="人物"   checked> 氏名</label>
+          <label><input type="checkbox" value="組織"   checked> 組織</label>
+          <label><input type="checkbox" value="住所"   checked> 住所</label>
+          <label><input type="checkbox" value="日付"   checked> 日付</label>
+          <label><input type="checkbox" value="電話"   checked> 電話番号</label>
           <label><input type="checkbox" value="メール" checked> メール</label>
-          <label><input type="checkbox" value="SNS" checked> SNS</label>
-          <label><input type="checkbox" value="特許" checked> 特許番号</label>
+          <label><input type="checkbox" value="SNS"    checked> SNS</label>
+          <label><input type="checkbox" value="特許"   checked> 特許番号</label>
           <label><input type="checkbox" value="シリアル" checked> シリアル番号</label>
-          <label><input type="checkbox" value="型番" checked> 型番</label>
-          <label><input type="checkbox" value="金額" checked> 金額</label>
+          <label><input type="checkbox" value="型番"   checked> 型番</label>
+          <label><input type="checkbox" value="金額"   checked> 金額</label>
         </div>
       </div>
 
       <label>入力テキスト（Ctrl+V でも貼り付け可能）</label>
       <textarea id="text-input" placeholder="センシティブ情報を含むテキストをここに入力..."></textarea>
+
+      <div class="action-row">
+        <button class="btn-exec"        onclick="maskText()">マスキング実行</button>
+        <button class="btn-unmask-exec" onclick="unmaskText()">復号化実行</button>
+      </div>
+
       <div class="status" id="text-status"></div>
       <div class="result-box" id="text-result"></div>
+      <div style="margin-top:8px">
+        <button class="btn-copy" onclick="copyResult()">結果をコピー</button>
+      </div>
     </div>
   </div>
 
@@ -119,38 +172,40 @@
       <p style="font-size:.85rem;color:#666;margin-bottom:12px">
         対応形式: docx / xlsx / pptx / pdf / jpg / png / bmp / txt / csv / json など
       </p>
-      <div class="row">
-        <div>
-          <label>マスキングの方法</label>
-          <select id="file-mode">
-            <option value="blackout">「●」で塗りつぶす</option>
-            <option value="unique">「氏名1」などの文字に置き換える</option>
-            <option value="pigpen">暗号化(元に戻せるよ)</option>
-          </select>
-        </div>
+
+      <div class="method-label">マスキングの方法</div>
+      <div class="method-bar" id="file-method-bar">
+        <button class="btn-method sel-mask" onclick="selectMethod('file','blackout',this)">伏字（●）</button>
+        <button class="btn-method"          onclick="selectMethod('file','unique',this)">一意性保持</button>
+        <button class="btn-method"          onclick="selectMethod('file','pigpen',this)">ピッグペン暗号</button>
+        <button class="btn-method"          onclick="selectMethod('file','decrypt',this)">復号化</button>
+      </div>
+      <div class="example-box show" id="file-example">
+        <div class="example-label">例)</div>
+        <span id="file-example-body">田中太郎さんの電話番号 090-1234-5678 → <b>●●●</b>さんの電話番号 <b>●●●-●●●●-●●●●</b></span>
       </div>
 
-      <div class="category-box">
+      <div class="category-box section-gap" id="file-cat-box">
         <h3>マスキング対象 <span style="font-size:.8rem;color:#888;font-weight:400">（チェックした種別のみマスク）</span>
-          <button type="button" onclick="setAllCategories('file',true)" style="margin-left:12px;padding:2px 8px;font-size:.78rem;font-weight:400;background:#e9ecef;border:none;border-radius:4px;cursor:pointer">全選択</button>
-          <button type="button" onclick="setAllCategories('file',false)" style="padding:2px 8px;font-size:.78rem;font-weight:400;background:#e9ecef;border:none;border-radius:4px;cursor:pointer">全解除</button>
+          <button type="button" onclick="setAll('file',true)"  style="margin-left:12px;padding:2px 8px;font-size:.78rem;font-weight:400;background:#e9ecef;border:none;border-radius:4px;cursor:pointer">全選択</button>
+          <button type="button" onclick="setAll('file',false)" style="padding:2px 8px;font-size:.78rem;font-weight:400;background:#e9ecef;border:none;border-radius:4px;cursor:pointer">全解除</button>
         </h3>
         <div class="category-grid" id="file-categories">
-          <label><input type="checkbox" value="人物" checked> 氏名</label>
-          <label><input type="checkbox" value="組織" checked> 組織</label>
-          <label><input type="checkbox" value="住所" checked> 住所</label>
-          <label><input type="checkbox" value="日付" checked> 日付</label>
-          <label><input type="checkbox" value="電話" checked> 電話番号</label>
+          <label><input type="checkbox" value="人物"   checked> 氏名</label>
+          <label><input type="checkbox" value="組織"   checked> 組織</label>
+          <label><input type="checkbox" value="住所"   checked> 住所</label>
+          <label><input type="checkbox" value="日付"   checked> 日付</label>
+          <label><input type="checkbox" value="電話"   checked> 電話番号</label>
           <label><input type="checkbox" value="メール" checked> メール</label>
-          <label><input type="checkbox" value="SNS" checked> SNS</label>
-          <label><input type="checkbox" value="特許" checked> 特許番号</label>
+          <label><input type="checkbox" value="SNS"    checked> SNS</label>
+          <label><input type="checkbox" value="特許"   checked> 特許番号</label>
           <label><input type="checkbox" value="シリアル" checked> シリアル番号</label>
-          <label><input type="checkbox" value="型番" checked> 型番</label>
-          <label><input type="checkbox" value="金額" checked> 金額</label>
+          <label><input type="checkbox" value="型番"   checked> 型番</label>
+          <label><input type="checkbox" value="金額"   checked> 金額</label>
         </div>
       </div>
 
-      <div class="category-box" id="file-options-box">
+      <div class="category-box section-gap" id="file-options-box">
         <h3>追加オプション <span style="font-size:.8rem;color:#888;font-weight:400">（ファイル種別に応じて適用）</span></h3>
         <div class="option-grid">
           <label><input type="checkbox" id="opt-word-headers" value="word_remove_headers" checked> Word: ヘッダー・フッターを削除</label>
@@ -165,10 +220,15 @@
         <br><span style="font-size:.8rem">（最大 50 MB）</span>
       </div>
       <input type="file" id="file-input" style="display:none" onchange="onFileSelect(event)">
-      <div class="status" id="file-status"></div>
-      <div style="margin-top:12px;display:flex;gap:8px;">
-        <button class="btn-primary" id="file-btn" onclick="maskFile()" disabled>マスキング実行 → ダウンロード</button>
-        <button class="btn-secondary" id="file-unmask-btn" onclick="unmaskFile()" disabled>暗号化解除 → ダウンロード</button>
+
+      <div class="action-row">
+        <button class="btn-exec"        id="file-mask-btn"   disabled>マスキング実行</button>
+        <button class="btn-unmask-exec" id="file-unmask-btn" disabled>復号化実行</button>
+      </div>
+
+      <div class="progress-wrap" id="file-progress">
+        <div class="progress-outer"><div class="progress-inner" id="file-pbar"></div></div>
+        <div class="progress-text"  id="file-ptext"></div>
       </div>
     </div>
   </div>
@@ -179,70 +239,122 @@
       <h2>クリップボード画像マスキング</h2>
       <p style="font-size:.85rem;color:#666;margin-bottom:12px">
         スクリーンショット等をコピーした後、下のエリアへ Ctrl+V で貼り付けてください。
+        画像内の文字を OCR で検出して黒塗りマスキングします。
       </p>
+
       <div class="paste-zone" id="paste-zone" tabindex="0"
            onpaste="onPasteImage(event)" onclick="document.getElementById('paste-zone').focus()">
         ここをクリックして Ctrl+V で画像を貼り付け
         <br><img id="paste-preview" alt="貼り付け画像プレビュー">
       </div>
-      <div class="status" id="clipboard-status"></div>
-      <div style="margin-top:12px">
-        <button class="btn-primary" id="clip-btn" onclick="maskClipboardImage()" disabled>マスキング実行 → ダウンロード</button>
+
+      <div class="action-row">
+        <button class="btn-exec" id="clip-mask-btn" disabled>マスキング実行</button>
+      </div>
+
+      <div class="progress-wrap" id="clip-progress">
+        <div class="progress-outer"><div class="progress-inner" id="clip-pbar"></div></div>
+        <div class="progress-text"  id="clip-ptext"></div>
       </div>
     </div>
   </div>
 
 </main>
-
 <script>
-let _selectedFile = null;
-let _pastedImageBlob = null;
+// ── 状態 ─────────────────────────────────────
+let _selectedFile   = null;
+let _pastedBlob     = null;
+let _textMode       = 'blackout';
+let _fileMode       = 'blackout';
+let _fileDlBlob     = null;
+let _fileDlName     = '';
+let _clipDlBlob     = null;
+let _fileLastAction = null;   // 'mask' | 'unmask'
+
+const EXAMPLES = {
+  blackout: '田中太郎さんの電話番号 090-1234-5678<br>→ <b>●●●</b>さんの電話番号 <b>●●●-●●●●-●●●●</b>',
+  unique:   '田中太郎さんの電話番号 090-1234-5678<br>→ <b>人物001</b>さんの電話番号 <b>電話001</b>',
+  pigpen:   '田中太郎 → <b>【人物:⊞⊟⊠⊡⊢⊣⊤⊥:】</b>',
+  decrypt:  '【人物:⊞⊟⊠⊡⊢⊣⊤⊥:】 → <b>田中太郎</b>',
+};
+
+const STEPS_MASK = [
+  [10, 'ファイルを読み込み中…'],
+  [30, 'テキストを解析中…'],
+  [55, '個人情報を検出中…'],
+  [75, 'マスキングを適用中…'],
+  [90, 'ファイルを生成中…'],
+];
+const STEPS_UNMASK = [
+  [15, 'ファイルを読み込み中…'],
+  [50, '暗号を復号中…'],
+  [85, 'ファイルを生成中…'],
+];
+const STEPS_OCR = [
+  [10, '画像を読み込み中…'],
+  [35, 'OCR でテキストを認識中…'],
+  [65, '個人情報を検出中…'],
+  [85, '黒塗りマスキングを適用中…'],
+];
 
 // ── タブ切り替え ──────────────────────────────
 function switchTab(name) {
-  document.querySelectorAll('.tab').forEach((t, i) => {
-    const names = ['text', 'file', 'clipboard'];
-    t.classList.toggle('active', names[i] === name);
-  });
+  const names = ['text', 'file', 'clipboard'];
+  document.querySelectorAll('.tab').forEach((t, i) =>
+    t.classList.toggle('active', names[i] === name));
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
 }
 
-// ── カテゴリ取得 ──────────────────────────────
+// ── メソッドボタン選択 ────────────────────────
+function selectMethod(prefix, mode, btn) {
+  document.querySelectorAll(`#${prefix}-method-bar .btn-method`).forEach(b =>
+    b.classList.remove('sel-mask', 'sel-decrypt'));
+  btn.classList.add(mode === 'decrypt' ? 'sel-decrypt' : 'sel-mask');
+
+  if (prefix === 'text') _textMode = mode;
+  else                   _fileMode = mode;
+
+  const exBox  = document.getElementById(`${prefix}-example`);
+  const exBody = document.getElementById(`${prefix}-example-body`);
+  exBox.classList.add('show');
+  exBody.innerHTML = EXAMPLES[mode] || '';
+
+  const catBox = document.getElementById(`${prefix}-cat-box`);
+  if (catBox) catBox.classList.toggle('greyed', mode === 'decrypt');
+}
+
+// ── カテゴリ ──────────────────────────────────
 function getCategories(prefix) {
-  const boxes = document.querySelectorAll(`#${prefix}-categories input[type=checkbox]`);
-  const all = Array.from(boxes);
-  if (all.every(cb => cb.checked)) return null;  // 全ON → null（全カテゴリ）
-  const selected = all.filter(cb => cb.checked).map(cb => cb.value);
-  return selected.length ? selected : null;
+  const all = Array.from(document.querySelectorAll(`#${prefix}-categories input[type=checkbox]`));
+  if (all.every(cb => cb.checked)) return null;
+  const sel = all.filter(cb => cb.checked).map(cb => cb.value);
+  return sel.length ? sel : null;
 }
 
-function setAllCategories(prefix, checked) {
-  document.querySelectorAll(`#${prefix}-categories input[type=checkbox]`).forEach(cb => {
-    cb.checked = checked;
-  });
+function setAll(prefix, checked) {
+  document.querySelectorAll(`#${prefix}-categories input[type=checkbox]`)
+    .forEach(cb => cb.checked = checked);
 }
 
-// ── ファイルオプション取得 ──────────────────────
+// ── ファイルオプション ────────────────────────
 function getFileOptions() {
-  const opts = [];
-  document.querySelectorAll('#file-options-box input[type=checkbox]').forEach(cb => {
-    if (cb.checked) opts.push(cb.value);
-  });
-  return opts.join(',');
+  return Array.from(document.querySelectorAll('#file-options-box input[type=checkbox]'))
+    .filter(cb => cb.checked).map(cb => cb.value).join(',');
 }
 
 // ── テキスト処理 ──────────────────────────────
 async function maskText() {
-  const text = document.getElementById('text-input').value;
-  const mode = document.getElementById('text-mode').value;
-  const categories = getCategories('text');
-  setStatus('text-status', '処理中...', '');
+  const text  = document.getElementById('text-input').value;
+  const mode  = (_textMode === 'decrypt') ? 'blackout' : _textMode;
+  const cats  = getCategories('text');
+  setStatus('text-status', '処理中…', '');
+  document.getElementById('text-result').textContent = '';
   try {
-    const res = await fetch('/api/mask/text', {
+    const res  = await fetch('/api/mask/text', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({text, mode, categories})
+      body: JSON.stringify({text, mode, categories: cats}),
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -255,12 +367,13 @@ async function maskText() {
 
 async function unmaskText() {
   const text = document.getElementById('text-input').value;
-  setStatus('text-status', '復号中...', '');
+  setStatus('text-status', '復号中…', '');
+  document.getElementById('text-result').textContent = '';
   try {
-    const res = await fetch('/api/unmask/text', {
+    const res  = await fetch('/api/unmask/text', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({text})
+      body: JSON.stringify({text}),
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
@@ -271,148 +384,229 @@ async function unmaskText() {
   }
 }
 
-function copyResult(id) {
-  const text = document.getElementById(id).textContent;
+function copyResult() {
+  const text = document.getElementById('text-result').textContent;
   navigator.clipboard.writeText(text).then(() => alert('コピーしました'));
 }
 
-// ── ファイル処理 ──────────────────────────────
-function onDragOver(e) {
-  e.preventDefault();
-  document.getElementById('drop-zone').classList.add('over');
-}
-function onDragLeave(e) {
-  document.getElementById('drop-zone').classList.remove('over');
-}
+// ── ファイル選択 ──────────────────────────────
+function onDragOver(e) { e.preventDefault(); document.getElementById('drop-zone').classList.add('over'); }
+function onDragLeave()  { document.getElementById('drop-zone').classList.remove('over'); }
 function onDrop(e) {
   e.preventDefault();
   document.getElementById('drop-zone').classList.remove('over');
-  const files = e.dataTransfer.files;
-  if (files.length) selectFile(files[0]);
+  if (e.dataTransfer.files.length) selectFile(e.dataTransfer.files[0]);
 }
-function onFileSelect(e) {
-  if (e.target.files.length) selectFile(e.target.files[0]);
-}
+function onFileSelect(e) { if (e.target.files.length) selectFile(e.target.files[0]); }
+
 function selectFile(f) {
-  _selectedFile = f;
-  document.getElementById('drop-zone').textContent = `選択済: ${f.name} (${(f.size/1024).toFixed(1)} KB)`;
-  document.getElementById('file-btn').disabled = false;
-  document.getElementById('file-unmask-btn').disabled = false;
-  setStatus('file-status', '', '');
+  _selectedFile   = f;
+  _fileDlBlob     = null;
+  _fileDlName     = '';
+  _fileLastAction = null;
+  document.getElementById('drop-zone').innerHTML =
+    `選択済: <b>${f.name}</b> <span style="font-size:.8rem;color:#888">(${(f.size/1024).toFixed(1)} KB)</span>`;
+
+  const mb = document.getElementById('file-mask-btn');
+  const ub = document.getElementById('file-unmask-btn');
+  mb.disabled  = false; mb.className = 'btn-exec';        mb.style.cssText = ''; mb.textContent = 'マスキング実行'; mb.onclick = () => fileAction('mask');
+  ub.disabled  = false; ub.className = 'btn-unmask-exec'; ub.style.cssText = ''; ub.textContent = '復号化実行';    ub.onclick = () => fileAction('unmask');
+
+  resetProgress('file');
+  document.getElementById('file-progress').classList.remove('show');
 }
 
-async function maskFile() {
+// ── ファイルアクション ────────────────────────
+async function fileAction(action) {
   if (!_selectedFile) return;
-  const mode = document.getElementById('file-mode').value;
-  const categories = getCategories('file');
-  const options = getFileOptions();
-  setStatus('file-status', '処理中...', '');
-  const fd = new FormData();
-  fd.append('file', _selectedFile);
-  fd.append('mode', mode);
-  if (categories) fd.append('categories', categories.join(','));
-  if (options) fd.append('options', options);
+
+  _fileLastAction = action;
+  _fileDlBlob     = null;
+
+  const mb = document.getElementById('file-mask-btn');
+  const ub = document.getElementById('file-unmask-btn');
+  const activeBtn  = (action === 'mask') ? mb : ub;
+  const inactiveBtn = (action === 'mask') ? ub : mb;
+
+  mb.disabled = true; ub.disabled = true;
+  activeBtn.disabled  = false;
+  activeBtn.className = (action === 'mask') ? 'btn-exec btn-running' : 'btn-unmask-exec btn-running';
+  activeBtn.textContent = '実行中';
+
+  document.getElementById('file-progress').classList.add('show');
+  resetProgress('file');
+  const timer = startProgress('file', action === 'mask' ? STEPS_MASK : STEPS_UNMASK);
+
   try {
-    const res = await fetch('/api/mask/file', {method: 'POST', body: fd});
+    let res;
+    if (action === 'mask') {
+      const mode = (_fileMode === 'decrypt') ? 'blackout' : _fileMode;
+      const cats = getCategories('file');
+      const opts = getFileOptions();
+      const fd   = new FormData();
+      fd.append('file', _selectedFile);
+      fd.append('mode', mode);
+      if (cats) fd.append('categories', cats.join(','));
+      if (opts) fd.append('options', opts);
+      res = await fetch('/api/mask/file', {method: 'POST', body: fd});
+    } else {
+      const fd = new FormData();
+      fd.append('file', _selectedFile);
+      res = await fetch('/api/unmask/file', {method: 'POST', body: fd});
+    }
+
+    clearInterval(timer);
     if (!res.ok) {
       let msg = res.statusText;
       try { const d = await res.json(); msg = d.error || msg; } catch {}
       throw new Error(msg);
     }
-    const blob = await res.blob();
-    const cd = res.headers.get('Content-Disposition') || '';
-    const fnMatch = cd.match(/filename="?([^"]+)"?/);
-    const name = fnMatch ? fnMatch[1] : 'masked_file';
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = name; a.click();
-    URL.revokeObjectURL(url);
-    setStatus('file-status', '✓ ダウンロード開始', 'ok');
+
+    const blob  = await res.blob();
+    const cd    = res.headers.get('Content-Disposition') || '';
+    const m     = cd.match(/filename\*?=(?:UTF-8'')?(?:"([^"]+)"|(\S+))/i);
+    _fileDlBlob = blob;
+    _fileDlName = m ? decodeURIComponent(m[1] || m[2]) : (action === 'mask' ? 'masked_file' : 'unmasked_file');
+
+    finishProgress('file', true);
+    activeBtn.className   = 'btn-exec btn-dl-ready';
+    activeBtn.style.cssText = '';
+    activeBtn.textContent = 'ダウンロード';
+    activeBtn.onclick     = () => { triggerDl(_fileDlBlob, _fileDlName); };
+    inactiveBtn.disabled  = true;
+
   } catch (e) {
-    setStatus('file-status', '✗ ' + e.message, 'err');
+    clearInterval(timer);
+    finishProgress('file', false, e.message);
+    mb.disabled = false; mb.className = 'btn-exec';        mb.style.cssText = ''; mb.textContent = 'マスキング実行'; mb.onclick = () => fileAction('mask');
+    ub.disabled = false; ub.className = 'btn-unmask-exec'; ub.style.cssText = ''; ub.textContent = '復号化実行';    ub.onclick = () => fileAction('unmask');
   }
 }
 
-async function unmaskFile() {
-  if (!_selectedFile) return;
-  setStatus('file-status', '復号中...', '');
-  const fd = new FormData();
-  fd.append('file', _selectedFile);
-  try {
-    const res = await fetch('/api/unmask/file', {method: 'POST', body: fd});
-    if (!res.ok) {
-      let msg = res.statusText;
-      try { const d = await res.json(); msg = d.error || msg; } catch {}
-      throw new Error(msg);
-    }
-    const blob = await res.blob();
-    const cd = res.headers.get('Content-Disposition') || '';
-    const fnMatch = cd.match(/filename="?([^"]+)"?/);
-    const name = fnMatch ? fnMatch[1] : 'unmasked_file';
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = name; a.click();
-    URL.revokeObjectURL(url);
-    setStatus('file-status', '✓ 復号完了・ダウンロード開始', 'ok');
-  } catch (e) {
-    setStatus('file-status', '✗ ' + e.message, 'err');
-  }
-}
-
-// ── クリップボード画像処理 ────────────────────
+// ── クリップボード画像 ────────────────────────
 function onPasteImage(e) {
-  const items = e.clipboardData.items;
-  for (const item of items) {
+  for (const item of e.clipboardData.items) {
     if (item.type.startsWith('image/')) {
-      _pastedImageBlob = item.getAsFile();
-      const url = URL.createObjectURL(_pastedImageBlob);
-      const prev = document.getElementById('paste-preview');
-      prev.src = url;
+      _pastedBlob  = item.getAsFile();
+      _clipDlBlob  = null;
+      const url    = URL.createObjectURL(_pastedBlob);
+      const prev   = document.getElementById('paste-preview');
+      prev.src     = url;
       prev.style.display = 'block';
-      document.getElementById('paste-zone').firstChild.textContent = '貼り付け済み — ';
-      document.getElementById('clip-btn').disabled = false;
-      setStatus('clipboard-status', '画像を取得しました', 'ok');
+      document.getElementById('paste-zone').childNodes[0].textContent = '貼り付け済み — ';
+
+      const btn = document.getElementById('clip-mask-btn');
+      btn.disabled    = false;
+      btn.className   = 'btn-exec';
+      btn.style.cssText = '';
+      btn.textContent = 'マスキング実行';
+      btn.onclick     = clipAction;
+
+      resetProgress('clip');
+      document.getElementById('clip-progress').classList.remove('show');
       return;
     }
   }
-  setStatus('clipboard-status', '画像データが見つかりません（テキストはテキストタブをご利用ください）', 'err');
+  alert('画像データが見つかりません（テキストはテキストタブをご利用ください）');
 }
 
-async function maskClipboardImage() {
-  if (!_pastedImageBlob) return;
-  setStatus('clipboard-status', '処理中...', '');
-  const fd = new FormData();
-  fd.append('file', _pastedImageBlob, 'clipboard.png');
+async function clipAction() {
+  if (!_pastedBlob) return;
+
+  const btn     = document.getElementById('clip-mask-btn');
+  btn.disabled  = false;
+  btn.className = 'btn-exec btn-running';
+  btn.textContent = '実行中';
+
+  document.getElementById('clip-progress').classList.add('show');
+  resetProgress('clip');
+  const timer = startProgress('clip', STEPS_OCR);
+
   try {
+    const fd = new FormData();
+    fd.append('file', _pastedBlob, 'clipboard.png');
     const res = await fetch('/api/mask/image', {method: 'POST', body: fd});
+
+    clearInterval(timer);
     if (!res.ok) {
       let msg = res.statusText;
       try { const d = await res.json(); msg = d.error || msg; } catch {}
       throw new Error(msg);
     }
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'masked.png'; a.click();
-    URL.revokeObjectURL(url);
-    setStatus('clipboard-status', '✓ ダウンロード開始', 'ok');
+
+    _clipDlBlob     = await res.blob();
+    finishProgress('clip', true);
+    btn.className   = 'btn-exec btn-dl-ready';
+    btn.style.cssText = '';
+    btn.textContent = 'ダウンロード';
+    btn.onclick     = () => triggerDl(_clipDlBlob, 'masked.png');
+
   } catch (e) {
-    setStatus('clipboard-status', '✗ ' + e.message, 'err');
+    clearInterval(timer);
+    finishProgress('clip', false, e.message);
+    _clipDlBlob     = null;
+    btn.disabled    = false;
+    btn.className   = 'btn-exec';
+    btn.style.cssText = '';
+    btn.textContent = 'マスキング実行';
+    btn.onclick     = clipAction;
   }
 }
 
-// ── ユーティリティ ─────────────────────────────
+// ── プログレスバー ────────────────────────────
+function startProgress(prefix, steps) {
+  let i = 0;
+  return setInterval(() => {
+    if (i >= steps.length) return;
+    const [pct, msg] = steps[i++];
+    setPbar(prefix, pct, msg);
+  }, 850);
+}
+
+function resetProgress(prefix) {
+  const bar = document.getElementById(`${prefix}-pbar`);
+  const txt = document.getElementById(`${prefix}-ptext`);
+  bar.style.width = '0%';
+  bar.classList.remove('done', 'err');
+  txt.textContent = '';
+}
+
+function finishProgress(prefix, ok, errMsg) {
+  const bar = document.getElementById(`${prefix}-pbar`);
+  const txt = document.getElementById(`${prefix}-ptext`);
+  bar.style.width = '100%';
+  bar.classList.remove('done', 'err');
+  if (ok) {
+    bar.classList.add('done');
+    txt.textContent = '完了';
+  } else {
+    bar.classList.add('err');
+    txt.textContent = '✗ エラー: ' + (errMsg || '');
+  }
+}
+
+function setPbar(prefix, pct, msg) {
+  document.getElementById(`${prefix}-pbar`).style.width  = pct + '%';
+  document.getElementById(`${prefix}-ptext`).textContent = msg;
+}
+
+// ── ダウンロード ──────────────────────────────
+function triggerDl(blob, name) {
+  const url = URL.createObjectURL(blob);
+  Object.assign(document.createElement('a'), {href: url, download: name}).click();
+  URL.revokeObjectURL(url);
+}
+
+// ── ステータス ─────────────────────────────────
 function setStatus(id, msg, cls) {
   const el = document.getElementById(id);
   el.textContent = msg;
   el.className = 'status' + (cls ? ' ' + cls : '');
 }
 
-// ── ハートビート：ブラウザ閉じ検知用 ──────────
+// ── ハートビート ──────────────────────────────
 (function() {
-  function beat() {
-    fetch('/api/heartbeat', { method: 'POST' }).catch(() => {});
-  }
+  function beat() { fetch('/api/heartbeat', {method: 'POST'}).catch(() => {}); }
   beat();
   setInterval(beat, 3000);
 })();
