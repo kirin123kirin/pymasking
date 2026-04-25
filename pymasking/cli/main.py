@@ -122,5 +122,24 @@ def web(host, port, debug):
     app.run(host=host, port=port, debug=debug)
 
 
+# ── masking コマンド（PyPI エントリーポイント） ────────────────
+
+def launch() -> None:
+    """pip install pymasking 後の `masking` コマンド。
+    ポート 55963 で Web UI を起動し、ブラウザを自動で開く。
+    """
+    import threading
+    import webbrowser
+    from pymasking.web.app import create_app
+
+    host, port = "127.0.0.1", 55963
+    app = create_app()
+    url = f"http://{host}:{port}"
+    click.echo(f"pymasking  →  {url}")
+    click.echo("終了するには Ctrl+C を押してください。")
+    threading.Timer(1.5, lambda: webbrowser.open(url)).start()
+    app.run(host=host, port=port, debug=False, use_reloader=False)
+
+
 if __name__ == "__main__":
     cli()

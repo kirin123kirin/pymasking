@@ -7,9 +7,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-
-
 def _setup_nlp():
     """Load ja_ginza.
 
@@ -29,7 +26,7 @@ except Exception:
     _HAS_GINZA = False
     _nlp = None
 
-CUSTOM_DICT_PATH = Path(__file__).parent.parent.parent / "data" / "dict" / "custom_dict.txt"
+CUSTOM_DICT_PATH = Path(__file__).parent.parent / "data" / "dict" / "custom_dict.txt"
 
 _custom_persons: List[str] = []
 _custom_orgs: List[str] = []

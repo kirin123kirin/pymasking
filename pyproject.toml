@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pymasking"
+version = "1.0.0"
+description = "個人情報マスキングツール（Web UI + CLI）"
+readme = "README.md"
+requires-python = ">=3.9"
+keywords = ["masking", "privacy", "japanese", "personal-information", "NLP"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Topic :: Text Processing",
+    "Topic :: Security",
+]
+dependencies = [
+    "flask>=2.0",
+    "click>=8.0",
+    "Pillow>=9.0",
+    "PyMuPDF>=1.20",
+    "python-docx>=0.8",
+    "openpyxl>=3.0",
+    "python-pptx>=0.6",
+    "chardet>=4.0",
+    "python-dateutil>=2.8",
+]
+
+[project.optional-dependencies]
+nlp = ["ja-ginza>=5.0", "spacy>=3.0"]
+ocr = ["pytesseract"]
+
+[project.scripts]
+masking = "pymasking.cli.main:launch"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pymasking*"]
+
+[tool.setuptools.package-data]
+"pymasking" = [
+    "web/templates/*.html",
+    "web/static/*",
+    "data/dict/*.txt",
+]
