@@ -100,11 +100,38 @@
   .status.ok  { color: #2d6a4f; }
   .status.err { color: #e63946; }
   .section-gap { margin-bottom: 14px; }
+
+  /* Tesseract notice */
+  .notice {
+    background: #fff8e1; border: 1px solid #f4a261; border-radius: 8px;
+    padding: 12px 16px; margin-bottom: 20px; font-size: .85rem; color: #5a3000;
+  }
+  .notice summary {
+    font-weight: 700; cursor: pointer; list-style: none; display: flex;
+    align-items: center; gap: 8px;
+  }
+  .notice summary::-webkit-details-marker { display: none; }
+  .notice summary::before { content: "▶"; font-size: .75rem; transition: transform .2s; }
+  .notice[open] summary::before { transform: rotate(90deg); }
+  .notice ol { margin: 8px 0 0 1.4em; line-height: 2; }
+  .notice a { color: #c4622d; }
 </style>
 </head>
 <body>
 <header>🔒 pymasking — 個人情報マスキングツール</header>
 <main>
+
+  <details class="notice">
+    <summary>⚠️ 画像・PDF の OCR マスキングには Tesseract OCR バイナリが別途必要です</summary>
+    <ol>
+      <li>以下の URL から installer をダウンロード<br>
+          <a href="https://github.com/UB-Mannheim/tesseract/wiki" target="_blank" rel="noopener">
+            https://github.com/UB-Mannheim/tesseract/wiki
+          </a></li>
+      <li>インストール時に「Additional language data」で「Japanese (jpn)」にチェックを入れる</li>
+      <li>インストール先（例: <code>C:\Program Files\Tesseract-OCR</code>）をシステムの PATH 環境変数に追加する</li>
+    </ol>
+  </details>
 
   <div class="tabs">
     <div class="tab active" onclick="switchTab('text')">テキスト</div>
