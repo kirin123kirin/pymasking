@@ -3,6 +3,7 @@
 import io
 import logging
 import os
+import signal
 import tempfile
 import threading
 import time
@@ -24,7 +25,7 @@ def _watchdog() -> None:
             active = _heartbeat_active
             elapsed = time.time() - _last_heartbeat
         if active and elapsed > _HEARTBEAT_TIMEOUT:
-            os._exit(0)
+            os.kill(os.getpid(), signal.SIGTERM)
 
 
 class _NoHeartbeatFilter(logging.Filter):
