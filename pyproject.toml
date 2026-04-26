@@ -28,10 +28,8 @@ dependencies = [
     "ja-ginza>=5.0",
     "spacy>=3.0",
     "easyocr>=1.7",
+    "pywin32; sys_platform == 'win32'",
 ]
-
-[project.optional-dependencies]
-win = ["pywin32; sys_platform == 'win32'"]
 
 [project.scripts]
 masking = "pymasking.cli.main:launch"
