@@ -44,7 +44,15 @@
   /* カテゴリ */
   .category-box { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px;
                   padding: 12px 16px; margin-bottom: 14px; }
-  .category-grid { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 6px; }
+  .category-box summary { font-size: .95rem; font-weight: 600; cursor: pointer;
+                           user-select: none; list-style: none; display: flex;
+                           align-items: center; gap: 6px; }
+  .category-box summary::before { content: '▶'; font-size: .7rem; color: #888;
+                                   transition: transform .2s; display: inline-block; }
+  .category-box details[open] summary::before { transform: rotate(90deg); }
+  .category-box summary .cat-label-sub { font-size:.8rem; color:#888; font-weight:400; }
+  .category-box summary .cat-btns { margin-left: auto; display: flex; gap: 4px; }
+  .category-grid { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 10px; }
   .category-grid label { display: inline-flex; align-items: center; gap: 5px;
                           font-size: .85rem; color: #333; cursor: pointer; margin: 0; }
   .category-grid input[type=checkbox] { cursor: pointer; }
@@ -146,23 +154,29 @@
       <textarea id="text-input" placeholder="センシティブ情報を含むテキストをここに入力..."></textarea>
 
       <div class="category-box section-gap" id="text-cat-box" style="margin-top:14px">
-        <h3>マスキング対象 <span style="font-size:.8rem;color:#888;font-weight:400">（チェックした種別のみマスク）</span>
-          <button type="button" onclick="setAll('text',true)"  style="margin-left:12px;padding:2px 8px;font-size:.78rem;font-weight:400;background:#e9ecef;border:none;border-radius:4px;cursor:pointer">全選択</button>
-          <button type="button" onclick="setAll('text',false)" style="padding:2px 8px;font-size:.78rem;font-weight:400;background:#e9ecef;border:none;border-radius:4px;cursor:pointer">全解除</button>
-        </h3>
-        <div class="category-grid" id="text-categories">
-          <label><input type="checkbox" value="人物"   checked> 氏名</label>
-          <label><input type="checkbox" value="組織"   checked> 組織</label>
-          <label><input type="checkbox" value="住所"   checked> 住所</label>
-          <label><input type="checkbox" value="日付"   checked> 日付</label>
-          <label><input type="checkbox" value="電話"   checked> 電話番号</label>
-          <label><input type="checkbox" value="メール" checked> メール</label>
-          <label><input type="checkbox" value="SNS"    checked> SNS</label>
-          <label><input type="checkbox" value="特許"   checked> 特許番号</label>
-          <label><input type="checkbox" value="シリアル" checked> シリアル番号</label>
-          <label><input type="checkbox" value="型番"   checked> 型番</label>
-          <label><input type="checkbox" value="金額"   checked> 金額</label>
-        </div>
+        <details>
+          <summary>
+            マスキング対象
+            <span class="cat-label-sub">（チェックした種別のみマスク）</span>
+            <span class="cat-btns" onclick="event.stopPropagation()">
+              <button type="button" onclick="setAll('text',true)"  style="padding:2px 8px;font-size:.78rem;font-weight:400;background:#e9ecef;border:none;border-radius:4px;cursor:pointer">全選択</button>
+              <button type="button" onclick="setAll('text',false)" style="padding:2px 8px;font-size:.78rem;font-weight:400;background:#e9ecef;border:none;border-radius:4px;cursor:pointer">全解除</button>
+            </span>
+          </summary>
+          <div class="category-grid" id="text-categories">
+            <label><input type="checkbox" value="人物"   checked> 氏名</label>
+            <label><input type="checkbox" value="組織"   checked> 組織</label>
+            <label><input type="checkbox" value="住所"   checked> 住所</label>
+            <label><input type="checkbox" value="日付"   checked> 日付</label>
+            <label><input type="checkbox" value="電話"   checked> 電話番号</label>
+            <label><input type="checkbox" value="メール" checked> メール</label>
+            <label><input type="checkbox" value="SNS"    checked> SNS</label>
+            <label><input type="checkbox" value="特許"   checked> 特許番号</label>
+            <label><input type="checkbox" value="シリアル" checked> シリアル番号</label>
+            <label><input type="checkbox" value="型番"   checked> 型番</label>
+            <label><input type="checkbox" value="金額"   checked> 金額</label>
+          </div>
+        </details>
       </div>
 
       <div class="action-row">
@@ -201,23 +215,29 @@
       <input type="file" id="file-input" style="display:none" onchange="onFileSelect(event)">
 
       <div class="category-box section-gap" id="file-cat-box" style="margin-top:14px">
-        <h3>マスキング対象 <span style="font-size:.8rem;color:#888;font-weight:400">（チェックした種別のみマスク）</span>
-          <button type="button" onclick="setAll('file',true)"  style="margin-left:12px;padding:2px 8px;font-size:.78rem;font-weight:400;background:#e9ecef;border:none;border-radius:4px;cursor:pointer">全選択</button>
-          <button type="button" onclick="setAll('file',false)" style="padding:2px 8px;font-size:.78rem;font-weight:400;background:#e9ecef;border:none;border-radius:4px;cursor:pointer">全解除</button>
-        </h3>
-        <div class="category-grid" id="file-categories">
-          <label><input type="checkbox" value="人物"   checked> 氏名</label>
-          <label><input type="checkbox" value="組織"   checked> 組織</label>
-          <label><input type="checkbox" value="住所"   checked> 住所</label>
-          <label><input type="checkbox" value="日付"   checked> 日付</label>
-          <label><input type="checkbox" value="電話"   checked> 電話番号</label>
-          <label><input type="checkbox" value="メール" checked> メール</label>
-          <label><input type="checkbox" value="SNS"    checked> SNS</label>
-          <label><input type="checkbox" value="特許"   checked> 特許番号</label>
-          <label><input type="checkbox" value="シリアル" checked> シリアル番号</label>
-          <label><input type="checkbox" value="型番"   checked> 型番</label>
-          <label><input type="checkbox" value="金額"   checked> 金額</label>
-        </div>
+        <details>
+          <summary>
+            マスキング対象
+            <span class="cat-label-sub">（チェックした種別のみマスク）</span>
+            <span class="cat-btns" onclick="event.stopPropagation()">
+              <button type="button" onclick="setAll('file',true)"  style="padding:2px 8px;font-size:.78rem;font-weight:400;background:#e9ecef;border:none;border-radius:4px;cursor:pointer">全選択</button>
+              <button type="button" onclick="setAll('file',false)" style="padding:2px 8px;font-size:.78rem;font-weight:400;background:#e9ecef;border:none;border-radius:4px;cursor:pointer">全解除</button>
+            </span>
+          </summary>
+          <div class="category-grid" id="file-categories">
+            <label><input type="checkbox" value="人物"   checked> 氏名</label>
+            <label><input type="checkbox" value="組織"   checked> 組織</label>
+            <label><input type="checkbox" value="住所"   checked> 住所</label>
+            <label><input type="checkbox" value="日付"   checked> 日付</label>
+            <label><input type="checkbox" value="電話"   checked> 電話番号</label>
+            <label><input type="checkbox" value="メール" checked> メール</label>
+            <label><input type="checkbox" value="SNS"    checked> SNS</label>
+            <label><input type="checkbox" value="特許"   checked> 特許番号</label>
+            <label><input type="checkbox" value="シリアル" checked> シリアル番号</label>
+            <label><input type="checkbox" value="型番"   checked> 型番</label>
+            <label><input type="checkbox" value="金額"   checked> 金額</label>
+          </div>
+        </details>
       </div>
 
       <div class="category-box section-gap" id="file-options-box">
