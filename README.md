@@ -32,6 +32,21 @@ Web UI と CLI の両方で動作します。
 pip install pymasking
 ```
 
+### 初回セットアップ（runtime 配布版）
+
+Python runtime を展開した場合は `setup.bat` をダブルクリックして実行してください。
+
+```
+setup.bat を実行すると以下が自動で行われます:
+  1. Python runtime フォルダを ユーザー PATH に追加
+  2. Scripts フォルダを ユーザー PATH に追加
+  3. デスクトップに masking.bat をコピー
+```
+
+セットアップ完了後、新しいコマンドプロンプトを開くか、デスクトップの `masking.bat` をダブルクリックして起動できます。
+
+---
+
 ### 画像 OCR モデルのダウンロード（画像の OCR マスキングに必要）
 
 画像ファイル（jpg / png / bmp）のマスキングには EasyOCR の日本語モデル（約 96 MB）が必要です。  
@@ -39,10 +54,13 @@ pip install pymasking
 
 ```bash
 # GitHub からダウンロード（デフォルト）
-masking-download
+masking-download.bat
 
 # 社内サーバー / SharePoint からダウンロード
-masking-download --url https://company.sharepoint.com/sites/IT/Shared%20Documents/ocr-models/
+masking-download.bat --url https://company.sharepoint.com/sites/IT/Shared%20Documents/ocr-models/
+
+# SSL 証明書エラーが出る場合（社内プロキシ環境）
+masking-download.bat --url https://... --no-verify-ssl
 ```
 
 モデルは `pymasking/data/model/` に保存され、2回目以降はオフラインで動作します。  
@@ -50,7 +68,7 @@ masking-download --url https://company.sharepoint.com/sites/IT/Shared%20Document
 
 #### 手動でモデルをダウンロードする場合
 
-ネットワーク制限等で `masking-download` が使えない場合は、以下の手順で手動配置できます。
+ネットワーク制限等でコマンドが使えない場合は、以下の手順で手動配置できます。
 
 **1. 以下の ZIP ファイルをブラウザ等でダウンロード**
 
@@ -81,8 +99,10 @@ site-packages\pymasking\data\model\
 
 ### Web UI（推奨）
 
-```bash
-masking
+デスクトップの `masking.bat` をダブルクリック、またはコマンドプロンプトで実行します。
+
+```bat
+masking.bat
 ```
 
 ブラウザで http://127.0.0.1:55963 が自動的に開きます。  
@@ -90,9 +110,9 @@ masking
 
 ### CLI
 
-```bash
-python -m pymasking.cli.main mask report.docx
-python -m pymasking.cli.main mask report.docx --mode unique
+```bat
+mask.bat report.docx
+mask.bat report.docx --mode unique
 ```
 
 出力ファイルは元のファイルと同じフォルダに `_変換後` サフィックスを付けて保存されます（例: `report_変換後.docx`）。
@@ -115,15 +135,15 @@ python -m pymasking.cli.main mask report.docx --mode unique
 
 #### マスキング対象の絞り込み
 
-実行ボタンの直上にあるチェックボックスで、マスクする情報の種別を選べます。  
-全て ON の場合はすべてのカテゴリを対象とします。
+「マスキング対象」をクリックすると種別チェックボックスが展開されます。  
+チェックした種別のみをマスクします。全て ON の場合はすべてのカテゴリを対象とします。
 
 ---
 
 ### テキストタブ
 
 1. テキストエリアに文章を貼り付け（Ctrl+V 可）
-2. 必要に応じてマスキング対象のチェックボックスを調整
+2. 必要に応じて「マスキング対象」を展開してチェックボックスを調整
 3. **マスキング実行** をクリック
 4. 下の結果欄に変換後テキストが表示される
 5. **結果をコピー** でクリップボードにコピー
@@ -134,7 +154,7 @@ python -m pymasking.cli.main mask report.docx --mode unique
 
 1. ドロップエリアにファイルをドラッグ＆ドロップ、またはクリックして選択  
    （対応形式: docx / xlsx / pptx / pdf / jpg / png / bmp / txt / csv / json 等）
-2. マスキング対象・追加オプションを確認
+2. 必要に応じて「マスキング対象」を展開してチェックボックスを調整
 3. **マスキング実行** をクリック
    - ボタンが赤く点滅し「**実行中**」と表示されます
    - 下のプログレスバーで処理状況を確認できます

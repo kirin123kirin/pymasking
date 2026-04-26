@@ -126,13 +126,14 @@ def build():
     # ─── 起動方法 ────────────────────────────────────────
     add_heading(doc, "起動方法", level=1)
 
-    doc.add_paragraph("コマンドプロンプトまたは PowerShell で以下を実行します。")
+    doc.add_paragraph("デスクトップの masking.bat をダブルクリックして起動します。")
+    doc.add_paragraph("またはコマンドプロンプトで以下を実行します。")
 
     tbl = doc.add_table(rows=1, cols=1)
     cell = tbl.rows[0].cells[0]
     set_cell_bg(cell, RGBColor(0x33, 0x20, 0x00))
     cp = cell.paragraphs[0]
-    r = cp.add_run("masking")
+    r = cp.add_run("masking.bat")
     r.font.name = "Consolas"
     r.font.size = Pt(13)
     r.font.color.rgb = ORANGE_LIGHT
@@ -156,7 +157,7 @@ def build():
     doc.add_paragraph()
 
     add_step(doc, "①", "「テキスト」タブを選択し、テキストエリアに文章を貼り付ける")
-    add_step(doc, "②", "マスキング方式・対象カテゴリを選択する")
+    add_step(doc, "②", "「マスキング方式」を選択し、必要に応じて「マスキング対象」をクリックして種別を絞り込む")
     add_step(doc, "③", "「マスキング実行」をクリックする")
     add_step(doc, "④", "結果欄に変換後テキストが表示される")
     add_step(doc, "⑤", "「結果をコピー」でクリップボードにコピーする")
@@ -176,7 +177,7 @@ def build():
 
     add_step(doc, "①", "「ファイル」タブを選択する")
     add_step(doc, "②", "ファイルをドラッグ＆ドロップ、またはクリックして選択する")
-    add_step(doc, "③", "マスキング方式・対象カテゴリ・追加オプションを確認する")
+    add_step(doc, "③", "「マスキング方式」を選択し、必要に応じて「マスキング対象」をクリックして種別を絞り込む")
     add_step(doc, "④", "「マスキング実行」をクリックする（ボタンが赤く点滅）")
     add_step(doc, "⑤", "ボタンが「ダウンロード」に変わったらクリックして保存する")
     add_note(doc, "出力ファイル名は元のファイル名に「_変換後」が付加されます（例: report_変換後.docx）")
