@@ -28,4 +28,4 @@ def process_file(file_path: Union[str, Path], mode: str = "blackout", categories
 
 def make_output_path(path: Path) -> Path:
     """入力パスに _masked サフィックスを付けた出力パスを返す。"""
-    return path.parent / f"{path.stem}_masked{path.suffix}"
+    return path.parent / f"{path.stem}_変換後{path.suffix}"
