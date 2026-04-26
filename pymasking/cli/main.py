@@ -3,7 +3,7 @@
 使用例:
   masking                           (Web UI 起動)
   python -m pymasking.cli.main mask report.docx
-  python -m pymasking.cli.main mask report.docx --mode pigpen
+  python -m pymasking.cli.main mask report.docx --mode unique
 """
 
 import click
@@ -21,7 +21,7 @@ def cli():
 @click.argument("file", type=click.Path(exists=True))
 @click.option(
     "--mode", "-m",
-    type=click.Choice(["blackout", "unique", "pigpen"]),
+    type=click.Choice(["blackout", "unique"]),
     default="blackout",
     show_default=True,
     help="マスキング方式（画像・PDF は常に視覚的塗りつぶし）",

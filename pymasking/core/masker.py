@@ -3,10 +3,10 @@
 from typing import Literal
 
 from .detector import detect_all, resolve_overlaps
-from .cipher import pigpen, blackout
+from .cipher import blackout
 from .cipher.unique import UniqueCounter
 
-MaskMode = Literal["blackout", "unique", "pigpen"]
+MaskMode = Literal["blackout", "unique"]
 
 
 def mask_text(text: str, mode: MaskMode = "blackout", categories: set = None) -> str:
@@ -24,12 +24,10 @@ def mask_text(text: str, mode: MaskMode = "blackout", categories: set = None) ->
         if not mt:
             continue
 
-        if mode == "blackout":
-            replacement = blackout.encode(mt)
-        elif mode == "unique":
+        if mode == "unique":
             replacement = counter.encode(det.category, mt)  # type: ignore[union-attr]
         else:
-            replacement = f"【{det.category}:{pigpen.encrypt(mt)}:】"
+            replacement = blackout.encode(mt)
 
         chars[det.mask_start:det.mask_end] = list(replacement)
 

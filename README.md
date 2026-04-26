@@ -74,7 +74,7 @@ masking
 
 ```bash
 python -m pymasking.cli.main mask report.docx
-python -m pymasking.cli.main mask report.docx --mode pigpen
+python -m pymasking.cli.main mask report.docx --mode unique
 ```
 
 ---
@@ -85,14 +85,13 @@ python -m pymasking.cli.main mask report.docx --mode pigpen
 
 #### マスキング方式の選択
 
-画面上部の 3 つのボタンで方式を選択します。  
+画面上部の 2 つのボタンで方式を選択します。  
 ボタンをクリックするとマスキング前後の例が表示されます。
 
 | ボタン | 効果 |
 |--------|------|
 | **伏字（●）** | 検出した情報を `●` で塗りつぶす（既定） |
 | **一意性保持** | `人物001` のように種別＋連番に置換 |
-| **ピッグペン暗号** | 暗号化して `【人物:⊞⊟⊠⊡:】` 形式で保存（不可逆） |
 
 #### マスキング対象の絞り込み
 
@@ -137,11 +136,10 @@ python -m pymasking.cli.main mask report.docx --mode pigpen
 
 ## マスキング方式
 
-| 方式 | 出力例 | 復号 |
-|------|--------|------|
-| 伏字（デフォルト） | `●●●` | 不可 |
-| 一意性保持 | `人物001` | 不可 |
-| ピッグペン暗号 | `【人物:⊞⊟⊠⊡:】` | 不可 |
+| 方式 | 出力例 |
+|------|--------|
+| 伏字（デフォルト） | `●●●` |
+| 一意性保持 | `人物001` |
 
 > 画像・PDF は方式に関わらず常に視覚的塗りつぶし（黒矩形）になります。
 

@@ -14,7 +14,7 @@ setup_model.bat
 
 # CLI でマスキング実行
 start_cli.bat mask report.docx
-start_cli.bat mask report.docx --mode pigpen
+start_cli.bat mask report.docx --mode unique
 
 # Web インターフェースを起動
 start_web.bat           # http://127.0.0.1:5000
@@ -49,7 +49,6 @@ pymasking/
 │   │   ├── detector.py      # センシティブ情報の検出エンジン（GiNZA NLP + 正規表現）
 │   │   ├── masker.py        # mask_text — 検出→置換の統合処理
 │   │   ├── cipher/
-│   │   │   ├── pigpen.py    # ピッグペン暗号（暗号化のみ）: UTF-8 hex → Unicode記号
 │   │   │   ├── unique.py    # 一意性保持方式（不可逆）: UniqueCounter クラス
 │   │   │   └── blackout.py  # 伏字（不可逆）: 文字数分の●に置換
 │   │   └── extractor/
@@ -91,15 +90,12 @@ pymasking/
 - `phrase_matcher_attr="NORM"` で Sudachi の正規化形を使い旧字体・異体字に対応
 - `overwrite_ents=False` で GiNZA 検出済みエンティティは上書きしない
 
-### 暗号化方式
+### マスキング方式
 
 | 方式 | 出力形式 | 可逆 |
 |------|---------|------|
 | 伏字（デフォルト） | `●●●` | ✗ |
 | 一意性保持 | `日付001` | ✗ |
-| ピッグペン | `【日付:⊞⊟⊠…:】` | ✗（復号機能を削除済み） |
-
-ピッグペンは `text.encode('utf-8').hex().upper()` の各 hex 文字を `⊞⊟⊠⊡⊢⊣⊤⊥⊦⊧⊨⊩⊪⊫⊬⊭` へ全単射変換する（暗号化のみ）。
 
 ### カスタム辞書
 

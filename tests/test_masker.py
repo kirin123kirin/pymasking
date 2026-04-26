@@ -3,8 +3,6 @@ import re
 import pytest
 from pymasking.core.masker import mask_text
 
-_PIGPEN_SYMBOLS = set("⊞⊟⊠⊡⊢⊣⊤⊥⊦⊧⊨⊩⊪⊫⊬⊭")
-
 
 class TestMaskTextEmpty:
     def test_empty_string_blackout(self):
@@ -12,9 +10,6 @@ class TestMaskTextEmpty:
 
     def test_empty_string_unique(self):
         assert mask_text("", mode="unique") == ""
-
-    def test_empty_string_pigpen(self):
-        assert mask_text("", mode="pigpen") == ""
 
 
 class TestMaskTextNoMatch:
@@ -25,10 +20,6 @@ class TestMaskTextNoMatch:
     def test_plain_text_unchanged_unique(self):
         text = "これは普通の文章です。"
         assert mask_text(text, mode="unique") == text
-
-    def test_plain_text_unchanged_pigpen(self):
-        text = "これは普通の文章です。"
-        assert mask_text(text, mode="pigpen") == text
 
 
 class TestMaskTextBlackout:
@@ -50,23 +41,6 @@ class TestMaskTextBlackout:
         masked = mask_text(original, mode="blackout")
         # blackout replaces each char with ●, so lengths should match
         assert len(masked) == len(original)
-
-
-class TestMaskTextPigpen:
-    def test_email_wrapped_in_brackets(self):
-        result = mask_text("user@example.com", mode="pigpen")
-        assert "【" in result and "】" in result
-
-    def test_output_contains_pigpen_symbols(self):
-        result = mask_text("user@example.com", mode="pigpen")
-        # extract content between 【 and 】
-        m = re.search(r"【[^:]+:([^:]+):】", result)
-        assert m is not None
-        assert all(c in _PIGPEN_SYMBOLS for c in m.group(1))
-
-    def test_category_label_in_output(self):
-        result = mask_text("user@example.com", mode="pigpen")
-        assert "メール" in result
 
 
 class TestMaskTextUnique:

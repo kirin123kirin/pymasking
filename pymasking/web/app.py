@@ -75,7 +75,7 @@ def create_app() -> Flask:
         data = request.get_json(force=True)
         text = data.get("text", "")
         mode = data.get("mode", "blackout")
-        if mode not in ("blackout", "unique", "pigpen"):
+        if mode not in ("blackout", "unique"):
             return jsonify({"error": "不正な mode"}), 400
 
         cats = data.get("categories")
@@ -92,7 +92,7 @@ def create_app() -> Flask:
 
         f = request.files["file"]
         mode = request.form.get("mode", "blackout")
-        if mode not in ("blackout", "unique", "pigpen"):
+        if mode not in ("blackout", "unique"):
             return jsonify({"error": "不正な mode"}), 400
 
         cats_str = request.form.get("categories", "").strip()

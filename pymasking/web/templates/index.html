@@ -138,7 +138,6 @@
       <div class="method-bar" id="text-method-bar">
         <button class="btn-method sel-mask" onclick="selectMethod('text','blackout',this)">伏字（●）</button>
         <button class="btn-method"          onclick="selectMethod('text','unique',this)">一意性保持</button>
-        <button class="btn-method"          onclick="selectMethod('text','pigpen',this)">ピッグペン暗号</button>
       </div>
       <div class="example-box show" id="text-example">
         <div class="example-label">例)</div>
@@ -189,7 +188,6 @@
       <div class="method-bar" id="file-method-bar">
         <button class="btn-method sel-mask" onclick="selectMethod('file','blackout',this)">伏字（●）</button>
         <button class="btn-method"          onclick="selectMethod('file','unique',this)">一意性保持</button>
-        <button class="btn-method"          onclick="selectMethod('file','pigpen',this)">ピッグペン暗号</button>
       </div>
       <div class="example-box show" id="file-example">
         <div class="example-label">例)</div>
@@ -255,7 +253,6 @@ let _fileDlName   = '';
 const EXAMPLES = {
   blackout: '田中太郎さんの電話番号 090-1234-5678<br>→ <b>●●●</b>さんの電話番号 <b>●●●-●●●●-●●●●</b>',
   unique:   '田中太郎さんの電話番号 090-1234-5678<br>→ <b>人物001</b>さんの電話番号 <b>電話001</b>',
-  pigpen:   '田中太郎 → <b>【人物:⊞⊟⊠⊡⊢⊣⊤⊥:】</b>',
 };
 
 const STEPS_MASK = [
