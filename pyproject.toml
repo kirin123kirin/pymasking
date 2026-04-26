@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=61", "wheel"]
+requires = ["setuptools>=61", "setuptools-scm>=8", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "pymasking"
-version = "1.0.0"
+dynamic = ["version"]
 description = "個人情報マスキングツール（Web UI + CLI）"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -37,6 +37,9 @@ win = ["pywin32; sys_platform == 'win32'"]
 masking = "pymasking.cli.main:launch"
 masking-download = "pymasking.cli.main:_download_entry"
 masking-shortcut = "pymasking.cli.main:create_shortcut"
+
+[tool.setuptools_scm]
+# git tag (例: v1.2.0) からバージョンを自動生成
 
 [tool.setuptools.packages.find]
 where = ["."]
