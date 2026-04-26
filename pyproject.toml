@@ -30,9 +30,13 @@ dependencies = [
     "easyocr>=1.7",
 ]
 
+[project.optional-dependencies]
+win = ["pywin32; sys_platform == 'win32'"]
+
 [project.scripts]
 masking = "pymasking.cli.main:launch"
 masking-download = "pymasking.cli.main:_download_entry"
+masking-shortcut = "pymasking.cli.main:create_shortcut"
 
 [tool.setuptools.packages.find]
 where = ["."]
