@@ -2,6 +2,7 @@
 
 使用例:
   masking                           (Web UI 起動)
+  masking-download                  (OCR モデル事前ダウンロード)
   python -m pymasking.cli.main mask report.docx
   python -m pymasking.cli.main mask report.docx --mode unique
 """
@@ -69,20 +70,63 @@ def launch() -> None:
     click.echo(f"pymasking  →  {url}")
     click.echo("終了するには Ctrl+C を押してください。")
     click.echo("")
-    click.echo("=" * 60)
-    click.echo("【注意】画像・PDF の OCR マスキングには Tesseract OCR バイナリが別途必要です。")
-    click.echo("")
-    click.echo("  インストール手順（Windows）:")
-    click.echo("  1. 以下の URL から installer をダウンロード")
-    click.echo("     https://github.com/UB-Mannheim/tesseract/wiki")
-    click.echo("  2. インストール時に「Additional language data」で")
-    click.echo("     「Japanese (jpn)」にチェックを入れる")
-    click.echo("  3. インストール先（例: C:\\Program Files\\Tesseract-OCR）を")
-    click.echo("     システムの PATH 環境変数に追加する")
-    click.echo("=" * 60)
+    click.echo("ヒント: 画像マスキングを初めて使う場合は先に `masking-download` を実行してください。")
     click.echo("")
     threading.Timer(1.5, lambda: webbrowser.open(url)).start()
     app.run(host=host, port=port, debug=False, use_reloader=False)
+
+
+# ── masking-download コマンド（PyPI エントリーポイント） ─────────
+
+_OCR_MODELS = [
+    {
+        "label": "テキスト検出モデル  craft_mlt_25k.pth",
+        "filename": "craft_mlt_25k.pth",
+        "url": "https://github.com/JaidedAI/EasyOCR/releases/download/pre-v1.1.6/craft_mlt_25k.zip",
+        "md5sum": "2f8227d2def4037cdb3b34389dcf9ec1",
+    },
+    {
+        "label": "日本語認識モデル   japanese_g2.pth",
+        "filename": "japanese_g2.pth",
+        "url": "https://github.com/JaidedAI/EasyOCR/releases/download/v1.3/japanese_g2.zip",
+        "md5sum": "bad5146990ccb1272cb0908440fbe15e",
+    },
+    {
+        "label": "英語認識モデル     english_g2.pth",
+        "filename": "english_g2.pth",
+        "url": "https://github.com/JaidedAI/EasyOCR/releases/download/v1.3/english_g2.zip",
+        "md5sum": "5864788e1821be9e454ec108d61b887d",
+    },
+]
+
+
+def download_models() -> None:
+    """pip install pymasking 後の `masking-download` コマンド。
+    EasyOCR の OCR モデルを pymasking/data/model/ に事前ダウンロードする。
+    """
+    from pymasking.core.extractor.image import _MODEL_DIR
+    from easyocr.utils import download_and_unzip
+
+    _MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    click.echo(f"モデル保存先: {_MODEL_DIR}")
+    click.echo("")
+
+    all_exist = True
+    for m in _OCR_MODELS:
+        dest = _MODEL_DIR / m["filename"]
+        if dest.exists():
+            click.echo(f"  スキップ（既存）: {m['label']}")
+        else:
+            all_exist = False
+            click.echo(f"  ダウンロード中: {m['label']}")
+            download_and_unzip(m["url"], m["filename"], str(_MODEL_DIR), verbose=False)
+            click.echo(f"  完了")
+
+    click.echo("")
+    if all_exist:
+        click.echo("すべてのモデルが既にダウンロード済みです。")
+    else:
+        click.echo("ダウンロード完了。次回以降はオフラインで動作します。")
 
 
 if __name__ == "__main__":
