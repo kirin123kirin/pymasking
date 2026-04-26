@@ -113,7 +113,7 @@ def create_app() -> Flask:
             try:
                 out = process_file(src, mode, categories=categories, options=options)
             except Exception as e:
-                app.logger.exception("api_mask_file error")
+                app.logger.error("api_mask_file error: %s", type(e).__name__)
                 return jsonify({"error": str(e)}), 500
 
             return send_file(
