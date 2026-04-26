@@ -31,11 +31,6 @@ dependencies = [
     "pywin32; sys_platform == 'win32'",
 ]
 
-[project.scripts]
-masking = "pymasking.cli.main:launch"
-masking-download = "pymasking.cli.main:_download_entry"
-masking-shortcut = "pymasking.cli.main:create_shortcut"
-
 [tool.setuptools_scm]
 # git tag (例: v1.2.0) からバージョンを自動生成
 
