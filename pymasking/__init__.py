@@ -1,3 +1,3 @@
-from .core.masker import mask_text, unmask_text
+from .core.masker import mask_text
 
-__all__ = ["mask_text", "unmask_text"]
+__all__ = ["mask_text"]

@@ -15,8 +15,6 @@ setup_model.bat
 # CLI でマスキング実行
 start_cli.bat mask report.docx
 start_cli.bat mask report.docx --mode pigpen
-start_cli.bat mask --clipboard
-start_cli.bat unmask report_masked.txt
 
 # Web インターフェースを起動
 start_web.bat           # http://127.0.0.1:5000
@@ -49,9 +47,9 @@ pymasking/
 ├── pymasking/
 │   ├── core/
 │   │   ├── detector.py      # センシティブ情報の検出エンジン（GiNZA NLP + 正規表現）
-│   │   ├── masker.py        # mask_text / unmask_text — 検出→置換の統合処理
+│   │   ├── masker.py        # mask_text — 検出→置換の統合処理
 │   │   ├── cipher/
-│   │   │   ├── pigpen.py    # ピッグペン暗号（可逆）: UTF-8 hex → Unicode記号
+│   │   │   ├── pigpen.py    # ピッグペン暗号（暗号化のみ）: UTF-8 hex → Unicode記号
 │   │   │   ├── unique.py    # 一意性保持方式（不可逆）: UniqueCounter クラス
 │   │   │   └── blackout.py  # 伏字（不可逆）: 文字数分の●に置換
 │   │   └── extractor/
@@ -59,9 +57,8 @@ pymasking/
 │   │       ├── plaintext.py # テキストファイル（encoding 自動検出）
 │   │       ├── office.py    # docx / xlsx / pptx（テキスト置換）
 │   │       ├── image.py     # jpg / png（OCR → 黒塗り）
-│   │       ├── pdf_handler.py # PDF（PyMuPDF でテキスト位置検索 → 黒矩形）
-│   │       └── clipboard.py # クリップボード読み取り・一時ファイル保存
-│   ├── cli/main.py          # Click ベース CLI（mask / unmask / web コマンド）
+│   │       └── pdf_handler.py # PDF（PyMuPDF でテキスト位置検索 → 黒矩形）
+│   ├── cli/main.py          # Click ベース CLI（mask / web コマンド）
 │   └── web/
 │       ├── app.py           # Flask アプリ（create_app() ファクトリ）
 │       └── templates/index.html  # シングルページ UI
@@ -100,9 +97,9 @@ pymasking/
 |------|---------|------|
 | 伏字（デフォルト） | `●●●` | ✗ |
 | 一意性保持 | `日付001` | ✗ |
-| ピッグペン | `【日付:⊞⊟⊠…:】` | ✓ |
+| ピッグペン | `【日付:⊞⊟⊠…:】` | ✗（復号機能を削除済み） |
 
-ピッグペンは `text.encode('utf-8').hex().upper()` の各 hex 文字を `⊞⊟⊠⊡⊢⊣⊤⊥⊦⊧⊨⊩⊪⊫⊬⊭` へ全単射変換する。
+ピッグペンは `text.encode('utf-8').hex().upper()` の各 hex 文字を `⊞⊟⊠⊡⊢⊣⊤⊥⊦⊧⊨⊩⊪⊫⊬⊭` へ全単射変換する（暗号化のみ）。
 
 ### カスタム辞書
 
@@ -124,7 +121,6 @@ pymasking/
 | pytesseract + Tesseract | 画像 OCR |
 | Pillow | 画像処理 |
 | python-dateutil | 日付検証 |
-| pywin32 | Windows クリップボード（画像・ファイル取得） |
 | ja-ginza + spacy | 固有表現認識（最優先。setup_model.bat で導入） |
 | sudachidict_full | 高精度辞書（旧字体正規化・珍しい固有名詞対応） |
 

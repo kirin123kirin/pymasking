@@ -1,6 +1,6 @@
 """境界値テスト: pymasking.core.cipher.pigpen"""
 import pytest
-from pymasking.core.cipher.pigpen import encrypt, decrypt
+from pymasking.core.cipher.pigpen import encrypt
 
 SYMBOLS = set("⊞⊟⊠⊡⊢⊣⊤⊥⊦⊧⊨⊩⊪⊫⊬⊭")
 
@@ -39,28 +39,6 @@ class TestEncryptOutput:
         result = encrypt("@#$%")
         assert all(c in SYMBOLS for c in result)
 
-
-class TestDecryptEmpty:
-    def test_empty_string(self):
-        assert decrypt("") == ""
-
-
-class TestDecryptError:
-    def test_invalid_char_raises(self):
-        with pytest.raises(ValueError):
-            decrypt("X")  # X はシンボル集合外
-
-    def test_ascii_letter_raises(self):
-        with pytest.raises(ValueError):
-            decrypt("abc")
-
-    def test_odd_symbol_count_raises(self):
-        # 1 シンボル = 1 hex 文字 → 奇数長の hex → bytes.fromhex がエラー
-        with pytest.raises(ValueError):
-            decrypt("⊞")
-
-
-class TestRoundtrip:
     @pytest.mark.parametrize("text", [
         "hello",
         "田中太郎",
@@ -71,15 +49,9 @@ class TestRoundtrip:
         "  空白を含む  ",
         "a" * 500,
         "特殊文字: !@#$%^&*()",
+        "\n",
+        "\t",
     ])
-    def test_roundtrip(self, text):
-        assert decrypt(encrypt(text)) == text
-
-    def test_roundtrip_empty(self):
-        assert decrypt(encrypt("")) == ""
-
-    def test_roundtrip_newline(self):
-        assert decrypt(encrypt("\n")) == "\n"
-
-    def test_roundtrip_tab(self):
-        assert decrypt(encrypt("\t")) == "\t"
+    def test_output_all_symbols(self, text):
+        result = encrypt(text)
+        assert all(c in SYMBOLS for c in result)

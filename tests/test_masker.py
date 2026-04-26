@@ -1,7 +1,7 @@
 """境界値テスト: pymasking.core.masker"""
 import re
 import pytest
-from pymasking.core.masker import mask_text, unmask_text
+from pymasking.core.masker import mask_text
 
 _PIGPEN_SYMBOLS = set("⊞⊟⊠⊡⊢⊣⊤⊥⊦⊧⊨⊩⊪⊫⊬⊭")
 
@@ -102,54 +102,3 @@ class TestMaskTextCategoryFilter:
         result = mask_text(text, mode="blackout", categories={"電話"})
         assert "@" in result
         assert "090-1234-5678" not in result
-
-
-# ── unmask_text ────────────────────────────────────────────────
-
-class TestUnmaskTextEmpty:
-    def test_empty_string(self):
-        assert unmask_text("") == ""
-
-
-class TestUnmaskTextNoMarkers:
-    def test_plain_text_unchanged(self):
-        text = "マスキングなしのテキスト"
-        assert unmask_text(text) == text
-
-    def test_partial_bracket_unchanged(self):
-        text = "【incomplete"
-        assert unmask_text(text) == text
-
-
-class TestUnmaskTextRoundtrip:
-    def test_pigpen_roundtrip_email(self):
-        original = "user@example.com"
-        masked = mask_text(original, mode="pigpen")
-        restored = unmask_text(masked)
-        assert restored == original
-
-    def test_pigpen_roundtrip_japanese(self):
-        original = "090-1234-5678"
-        masked = mask_text(original, mode="pigpen")
-        restored = unmask_text(masked)
-        assert restored == original
-
-    def test_pigpen_roundtrip_preserves_surrounding_text(self):
-        original = "連絡先: user@example.com までご連絡ください。"
-        masked = mask_text(original, mode="pigpen")
-        restored = unmask_text(masked)
-        assert restored == original
-
-    def test_multiple_tokens_roundtrip(self):
-        original = "email: a@x.com / tel: 090-1234-5678"
-        masked = mask_text(original, mode="pigpen")
-        restored = unmask_text(masked)
-        assert restored == original
-
-
-class TestUnmaskTextInvalidToken:
-    def test_invalid_pigpen_token_kept_as_is(self):
-        # 不正なシンボルが含まれていたらそのまま返す
-        text = "【メール:INVALID:】"
-        result = unmask_text(text)
-        assert result == text

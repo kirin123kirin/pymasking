@@ -38,11 +38,6 @@ _ALLOWED_EXTS = {
     ".jpg", ".jpeg", ".png", ".bmp", ".pdf",
 }
 
-_UNMASK_EXTS = {
-    ".txt", ".csv", ".json", ".xml", ".md", ".log",
-    ".docx", ".xlsx", ".pptx",
-}
-
 
 def _preload_ocr_models() -> None:
     """Background thread: load surya OCR models from local disk at startup."""
@@ -90,14 +85,6 @@ def create_app() -> Flask:
         result = mask_text(text, mode, categories=categories)
         return jsonify({"result": result})
 
-    @app.route("/api/unmask/text", methods=["POST"])
-    def api_unmask_text():
-        data = request.get_json(force=True)
-        text = data.get("text", "")
-        from pymasking.core.masker import unmask_text
-        result = unmask_text(text)
-        return jsonify({"result": result})
-
     @app.route("/api/mask/file", methods=["POST"])
     def api_mask_file():
         if "file" not in request.files:
@@ -135,63 +122,5 @@ def create_app() -> Flask:
                 download_name=out.name,
                 mimetype="application/octet-stream",
             )
-
-    @app.route("/api/unmask/file", methods=["POST"])
-    def api_unmask_file():
-        if "file" not in request.files:
-            return jsonify({"error": "ファイルが見つかりません"}), 400
-
-        f = request.files["file"]
-        filename = Path(f.filename).name if f.filename else ""
-        ext = Path(filename).suffix.lower()
-        if not filename or ext not in _UNMASK_EXTS:
-            return jsonify({"error": f"暗号化解除は画像・PDF に対応していません: {ext}"}), 400
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            src = Path(tmpdir) / filename
-            f.save(src)
-
-            from pymasking.core.extractor import unmask_file
-            try:
-                out = unmask_file(src)
-            except Exception as e:
-                app.logger.exception("api_unmask_file error")
-                return jsonify({"error": str(e)}), 500
-
-            return send_file(
-                io.BytesIO(out.read_bytes()),
-                as_attachment=True,
-                download_name=out.name,
-                mimetype="application/octet-stream",
-            )
-
-    @app.route("/api/mask/image", methods=["POST"])
-    def api_mask_image():
-        """クリップボード画像（base64 または multipart）のマスキング。"""
-        if "file" in request.files:
-            f = request.files["file"]
-            from PIL import Image
-            img = Image.open(f.stream)
-        else:
-            data = request.get_json(force=True)
-            b64 = data.get("image_base64", "")
-            if not b64:
-                return jsonify({"error": "画像データがありません"}), 400
-            import base64
-            from PIL import Image
-            raw = base64.b64decode(b64)
-            img = Image.open(io.BytesIO(raw))
-
-        from pymasking.core.extractor.image import process_image_data
-        try:
-            masked = process_image_data(img)
-        except Exception as e:
-            app.logger.exception("api_mask_image error")
-            return jsonify({"error": str(e)}), 500
-
-        buf = io.BytesIO()
-        masked.save(buf, format="PNG")
-        buf.seek(0)
-        return send_file(buf, mimetype="image/png", download_name="masked.png", as_attachment=True)
 
     return app

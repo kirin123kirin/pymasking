@@ -1,6 +1,5 @@
 """テキストのマスキング処理本体。"""
 
-import re
 from typing import Literal
 
 from .detector import detect_all, resolve_overlaps
@@ -35,16 +34,3 @@ def mask_text(text: str, mode: MaskMode = "blackout", categories: set = None) ->
         chars[det.mask_start:det.mask_end] = list(replacement)
 
     return "".join(chars)
-
-
-def unmask_text(text: str) -> str:
-    """ピッグペン暗号化されたテキストを復号して返す。"""
-    pattern = r"【([^:]+):([^:]+):】"
-
-    def _replace(m: re.Match) -> str:
-        try:
-            return pigpen.decrypt(m.group(2))
-        except ValueError:
-            return m.group(0)
-
-    return re.sub(pattern, _replace, text)

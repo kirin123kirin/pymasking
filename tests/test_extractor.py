@@ -1,7 +1,7 @@
-"""境界値テスト: pymasking.core.extractor (make_output_path / unmask_file)"""
+"""境界値テスト: pymasking.core.extractor (make_output_path)"""
 import pytest
 from pathlib import Path
-from pymasking.core.extractor import make_output_path, unmask_file
+from pymasking.core.extractor import make_output_path
 
 
 # ── make_output_path ───────────────────────────────────────────
@@ -50,43 +50,3 @@ class TestMakeOutputPathEdgeCases:
         result = make_output_path(p)
         assert result == Path("/tmp/v1.2.3_masked.txt")
 
-
-# ── unmask_file ────────────────────────────────────────────────
-
-class TestUnmaskFileImageRejected:
-    @pytest.mark.parametrize("ext", [".jpg", ".jpeg", ".png", ".bmp", ".pdf"])
-    def test_image_pdf_raises(self, ext, tmp_path):
-        f = tmp_path / f"file{ext}"
-        f.touch()
-        with pytest.raises(ValueError, match="画像・PDF"):
-            unmask_file(f)
-
-
-class TestUnmaskFilePlaintext:
-    def test_plain_text_no_pigpen_unchanged(self, tmp_path):
-        src = tmp_path / "plain.txt"
-        src.write_text("マスキングなし", encoding="utf-8")
-        out = unmask_file(src)
-        assert out.exists()
-        assert out.read_text(encoding="utf-8") == "マスキングなし"
-
-    def test_output_path_has_unmasked_suffix(self, tmp_path):
-        src = tmp_path / "data.txt"
-        src.write_text("テキスト", encoding="utf-8")
-        out = unmask_file(src)
-        assert "_unmasked" in out.name
-
-    def test_pigpen_roundtrip_via_file(self, tmp_path):
-        from pymasking.core.masker import mask_text
-        original = "user@example.com"
-        masked = mask_text(original, mode="pigpen")
-        src = tmp_path / "masked.txt"
-        src.write_text(masked, encoding="utf-8")
-        out = unmask_file(src)
-        assert out.read_text(encoding="utf-8") == original
-
-    def test_empty_file(self, tmp_path):
-        src = tmp_path / "empty.txt"
-        src.write_text("", encoding="utf-8")
-        out = unmask_file(src)
-        assert out.read_text(encoding="utf-8") == ""

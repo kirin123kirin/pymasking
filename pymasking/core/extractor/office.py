@@ -3,7 +3,7 @@
 import shutil
 from pathlib import Path
 
-from ..masker import mask_text, unmask_text, MaskMode
+from ..masker import mask_text, MaskMode
 from . import make_output_path
 
 
@@ -21,20 +21,6 @@ def _mask_paragraph(para, mode: MaskMode, categories=None) -> None:
     else:
         para.add_run(masked)
 
-
-def _unmask_paragraph(para) -> None:
-    raw = para.text
-    if not raw.strip():
-        return
-    restored = unmask_text(raw)
-    if restored == raw:
-        return
-    for run in para.runs:
-        run.text = ""
-    if para.runs:
-        para.runs[0].text = restored
-    else:
-        para.add_run(restored)
 
 
 def _remove_headers_footers(doc) -> None:
@@ -86,25 +72,6 @@ def process_docx(src: Path, mode: MaskMode, categories=None, options=None) -> Pa
     return out
 
 
-def unmask_docx(src: Path) -> Path:
-    from docx import Document
-
-    out = src.parent / f"{src.stem}_unmasked{src.suffix}"
-    shutil.copy2(src, out)
-    doc = Document(out)
-
-    for para in doc.paragraphs:
-        _unmask_paragraph(para)
-
-    for table in doc.tables:
-        for row in table.rows:
-            for cell in row.cells:
-                for para in cell.paragraphs:
-                    _unmask_paragraph(para)
-
-    doc.save(out)
-    return out
-
 
 def process_xlsx(src: Path, mode: MaskMode, categories=None, options=None) -> Path:
     from openpyxl import load_workbook
@@ -122,22 +89,6 @@ def process_xlsx(src: Path, mode: MaskMode, categories=None, options=None) -> Pa
     wb.save(out)
     return out
 
-
-def unmask_xlsx(src: Path) -> Path:
-    from openpyxl import load_workbook
-
-    out = src.parent / f"{src.stem}_unmasked{src.suffix}"
-    shutil.copy2(src, out)
-    wb = load_workbook(out)
-
-    for ws in wb.worksheets:
-        for row in ws.iter_rows():
-            for cell in row:
-                if cell.value and isinstance(cell.value, str):
-                    cell.value = unmask_text(cell.value)
-
-    wb.save(out)
-    return out
 
 
 def process_pptx(src: Path, mode: MaskMode, categories=None, options=None) -> Path:
@@ -164,26 +115,6 @@ def process_pptx(src: Path, mode: MaskMode, categories=None, options=None) -> Pa
     return out
 
 
-def unmask_pptx(src: Path) -> Path:
-    from pptx import Presentation
-
-    out = src.parent / f"{src.stem}_unmasked{src.suffix}"
-    shutil.copy2(src, out)
-    prs = Presentation(out)
-
-    for slide in prs.slides:
-        for shape in slide.shapes:
-            if not shape.has_text_frame:
-                continue
-            for para in shape.text_frame.paragraphs:
-                for run in para.runs:
-                    if run.text:
-                        run.text = unmask_text(run.text)
-
-    prs.save(out)
-    return out
-
-
 def process_office(src: Path, mode: MaskMode, categories=None, options=None) -> Path:
     ext = src.suffix.lower()
     if ext == ".docx":
@@ -195,12 +126,3 @@ def process_office(src: Path, mode: MaskMode, categories=None, options=None) -> 
     raise ValueError(f"未対応の Office 形式: {ext}")
 
 
-def unmask_office(src: Path) -> Path:
-    ext = src.suffix.lower()
-    if ext == ".docx":
-        return unmask_docx(src)
-    elif ext == ".xlsx":
-        return unmask_xlsx(src)
-    elif ext == ".pptx":
-        return unmask_pptx(src)
-    raise ValueError(f"未対応の Office 形式: {ext}")
