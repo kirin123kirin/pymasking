@@ -77,6 +77,8 @@ python -m pymasking.cli.main mask report.docx
 python -m pymasking.cli.main mask report.docx --mode unique
 ```
 
+出力ファイルは元のファイルと同じフォルダに `_変換後` サフィックスを付けて保存されます（例: `report_変換後.docx`）。
+
 ---
 
 ## Web UI の使い方
@@ -119,7 +121,7 @@ python -m pymasking.cli.main mask report.docx --mode unique
    - ボタンが赤く点滅し「**実行中**」と表示されます
    - 下のプログレスバーで処理状況を確認できます
 4. 処理完了後、ボタンがオレンジ色の「**ダウンロード**」に変わります
-5. **ダウンロード** をクリックするとマスキング済みファイルが保存されます
+5. **ダウンロード** をクリックするとマスキング済みファイルが保存されます（ファイル名: 元のファイル名に `_変換後` を付加）
 
 ---
 
