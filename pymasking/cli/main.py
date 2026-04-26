@@ -1,11 +1,11 @@
 """CLI エントリーポイント。
 
 使用例:
-  mask.bat report.docx
-  mask.bat report.docx --mode pigpen
-  mask.bat                          (クリップボードから入力)
-  unmask.bat report_masked.txt
-  unmask.bat                        (クリップボードから入力)
+  masking                           (Web UI 起動)
+  python -m pymasking.cli.main mask report.docx
+  python -m pymasking.cli.main mask report.docx --mode pigpen
+  python -m pymasking.cli.main mask --clipboard
+  python -m pymasking.cli.main unmask report_masked.txt
 """
 
 import click
