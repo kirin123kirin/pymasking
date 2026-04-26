@@ -9,11 +9,11 @@ Web UI と CLI の両方で動作します。
 
 ### テキストタブ — テキストを直接入力してマスキング
 
-![テキストマスキングデモ](doc/demo_text.gif)
+![テキストマスキングデモ](https://raw.githubusercontent.com/kirin123kirin/pymasking/main/doc/demo_text.gif)
 
 ### ファイルタブ — ドラッグ＆ドロップでファイルをマスキング
 
-![ファイルマスキングデモ](doc/demo_file.gif)
+![ファイルマスキングデモ](https://raw.githubusercontent.com/kirin123kirin/pymasking/main/doc/demo_file.gif)
 
 ---
 
