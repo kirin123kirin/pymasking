@@ -189,58 +189,5 @@ def _download_entry() -> None:
     download_models_cli(standalone_mode=True)
 
 
-# ── masking-shortcut コマンド（PyPI エントリーポイント） ──────────
-
-def create_shortcut() -> None:
-    """デスクトップに masking のショートカットを作成する（Windows 専用）。"""
-    import sys
-
-    if sys.platform != "win32":
-        click.echo("このコマンドは Windows 専用です。", err=True)
-        raise SystemExit(1)
-
-    import shutil
-    from pathlib import Path
-
-    try:
-        from win32com.client import Dispatch
-    except ImportError:
-        click.echo(
-            "pywin32 が必要です: pip install pywin32",
-            err=True,
-        )
-        raise SystemExit(1)
-
-    # masking コマンドの実行ファイルパスを特定
-    masking_exe = shutil.which("masking")
-    if masking_exe is None:
-        click.echo("masking コマンドが見つかりません。pip install pymasking を確認してください。", err=True)
-        raise SystemExit(1)
-
-    # アイコンパス
-    icon_path = Path(__file__).parent.parent / "web" / "static" / "favicon.ico"
-
-    # デスクトップパス
-    desktop = Path.home() / "Desktop"
-    if not desktop.exists():
-        # 日本語 Windows 環境
-        desktop = Path.home() / "デスクトップ"
-    if not desktop.exists():
-        desktop = Path.home()
-
-    shortcut_path = desktop / "masking.lnk"
-
-    shell = Dispatch("WScript.Shell")
-    shortcut = shell.CreateShortcut(str(shortcut_path))
-    shortcut.TargetPath = masking_exe
-    shortcut.WorkingDirectory = str(Path.home())
-    shortcut.Description = "pymasking — 個人情報マスキングツール"
-    if icon_path.exists():
-        shortcut.IconLocation = str(icon_path)
-    shortcut.Save()
-
-    click.echo(f"ショートカットを作成しました: {shortcut_path}")
-
-
 if __name__ == "__main__":
     cli()
