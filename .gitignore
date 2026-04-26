@@ -16,6 +16,9 @@ data/models/ja_ginza/
 # surya-ocr モデルキャッシュ（setup_model.bat で生成）
 data/models/hf_cache/
 
+# EasyOCR モデル（初回実行時に自動ダウンロード）
+pymasking/data/model/
+
 # JMnedict ソース XML（大容量・生成物）
 data/JMnedict.xml.gz
 

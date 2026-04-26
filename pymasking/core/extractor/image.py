@@ -1,6 +1,5 @@
-"""画像ファイルの視覚的マスキング処理（Tesseract OCR で検出 → 黒塗り）。"""
+"""画像ファイルの視覚的マスキング処理（EasyOCR で検出 → 黒塗り）。"""
 
-import os
 from pathlib import Path
 from typing import List, Tuple
 
@@ -9,74 +8,50 @@ from PIL import Image
 from ..detector import detect_all, resolve_overlaps
 from . import make_output_path
 
-_TESSERACT_CANDIDATES = [
-    r"C:\Program Files\Tesseract-OCR\tesseract.exe",
-    r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
-]
+# モデルの保存先: pymasking/data/model/
+_MODEL_DIR = Path(__file__).parent.parent.parent / "data" / "model"
 
-_tesseract_configured = False
+_reader = None
 
 
-def _configure_tesseract() -> None:
-    """Locate tesseract.exe and tessdata/; raise a user-friendly error if missing."""
-    global _tesseract_configured
-    if _tesseract_configured:
-        return
-    import shutil
-    import pytesseract
-
-    if shutil.which("tesseract"):
-        _tesseract_configured = True
-        return
-
-    username = os.environ.get("USERNAME", "")
-    candidates = _TESSERACT_CANDIDATES + [
-        rf"C:\Users\{username}\AppData\Local\Tesseract-OCR\tesseract.exe",
-    ]
-    for p in candidates:
-        if Path(p).exists():
-            pytesseract.pytesseract.tesseract_cmd = str(p)
-            tessdata = Path(p).parent / "tessdata"
-            if tessdata.exists():
-                os.environ["TESSDATA_PREFIX"] = str(tessdata)
-            _tesseract_configured = True
-            return
-
-    raise RuntimeError(
-        "Tesseract-OCR が見つかりません。\n"
-        "https://github.com/UB-Mannheim/tesseract/wiki からインストーラーをダウンロードし、\n"
-        "「Additional language data」で「Japanese (jpn)」を選択してインストールしてください。\n"
-        "インストール後、Tesseract のフォルダ（例: C:\\Program Files\\Tesseract-OCR）を PATH に追加してください。"
-    )
+def _get_reader():
+    global _reader
+    if _reader is None:
+        import easyocr
+        _MODEL_DIR.mkdir(parents=True, exist_ok=True)
+        _reader = easyocr.Reader(
+            ["ja", "en"],
+            gpu=False,
+            model_storage_directory=str(_MODEL_DIR),
+            verbose=False,
+        )
+    return _reader
 
 
 def preload_models() -> None:
-    """Lightweight no-op kept for app-startup compatibility (Tesseract loads per-call)."""
+    """アプリ起動時にバックグラウンドで EasyOCR モデルをロードする。"""
     import logging
     try:
-        _configure_tesseract()
+        _get_reader()
     except Exception as e:
-        logging.getLogger(__name__).warning("Tesseract の初期化に失敗しました: %s", e)
+        logging.getLogger(__name__).warning("EasyOCR モデルのロードに失敗しました: %s", e)
 
 
 def _ocr_words(image) -> List[Tuple[str, Tuple[int, int, int, int]]]:
-    """Run Tesseract OCR on image; return list of (word_text, (x, y, w, h))."""
-    import pytesseract
-
-    _configure_tesseract()
-    data = pytesseract.image_to_data(
-        image, lang="jpn+eng", output_type=pytesseract.Output.DICT
-    )
+    """EasyOCR で画像を解析し (word_text, (x, y, w, h)) のリストを返す。"""
+    reader = _get_reader()
+    results = reader.readtext(image, detail=1, paragraph=False)
 
     words: List[Tuple[str, Tuple[int, int, int, int]]] = []
-    for i, txt in enumerate(data["text"]):
-        if not txt or not txt.strip():
+    for bbox, text, _conf in results:
+        if not text or not text.strip():
             continue
-        words.append((
-            txt,
-            (int(data["left"][i]), int(data["top"][i]),
-             int(data["width"][i]), int(data["height"][i])),
-        ))
+        # bbox: [[x1,y1],[x2,y1],[x2,y2],[x1,y2]]
+        xs = [p[0] for p in bbox]
+        ys = [p[1] for p in bbox]
+        x, y = int(min(xs)), int(min(ys))
+        w, h = int(max(xs) - min(xs)), int(max(ys) - min(ys))
+        words.append((text, (x, y, w, h)))
     return words
 
 
@@ -92,7 +67,7 @@ def _find_sensitive_word_boxes(
     words: List[Tuple[str, Tuple[int, int, int, int]]],
     sensitive: List[str],
 ) -> List[Tuple[int, int, int, int]]:
-    """Return (x, y, w, h) boxes of OCR words that match any sensitive term."""
+    """センシティブ語にマッチする OCR ワードのバウンディングボックスを返す。"""
     boxes: List[Tuple[int, int, int, int]] = []
     for txt, bbox in words:
         for sw in sensitive:

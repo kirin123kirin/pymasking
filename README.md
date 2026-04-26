@@ -32,30 +32,12 @@ Web UI と CLI の両方で動作します。
 pip install pymasking
 ```
 
-### Tesseract OCR バイナリのインストール（画像・PDF の OCR マスキングに必要）
+### 画像 OCR モデルのダウンロード（画像の OCR マスキングに必要）
 
-`pip install` だけでは OCR 機能は使えません。Tesseract OCR バイナリを別途インストールしてください。
+画像ファイル（jpg / png / bmp）を初めてマスキングするとき、EasyOCR の日本語モデル（約 50 MB）を自動でダウンロードします。  
+モデルは `pymasking/data/model/` に保存され、2回目以降はオフラインで動作します。
 
-**1. インストーラーをダウンロード**
-
-以下のページから Windows 用インストーラーを取得します。
-
-> https://github.com/UB-Mannheim/tesseract/wiki
-
-**2. 日本語データを含めてインストール**
-
-インストーラー実行中、「Additional language data」のリストで  
-**「Japanese (jpn)」** にチェックを入れてからインストールします。
-
-**3. PATH を通す**
-
-インストール完了後、Tesseract のインストール先フォルダをシステムの PATH 環境変数に追加します。
-
-```
-C:\Program Files\Tesseract-OCR
-```
-
-> **確認方法:** コマンドプロンプトで `tesseract --version` が実行できれば完了です。
+> 外部ネットワークが制限された環境では、事前にモデルファイルを同フォルダに配置してください。
 
 ---
 
@@ -132,7 +114,7 @@ python -m pymasking.cli.main mask report.docx --mode unique
 | `.txt` `.csv` `.json` `.xml` `.md` `.log` | テキスト置換 |
 | `.docx` `.xlsx` `.pptx` | テキスト置換（書式保持） |
 | `.pdf` | テキスト座標を検出 → 黒矩形で塗りつぶし |
-| `.jpg` `.jpeg` `.png` `.bmp` | Tesseract OCR で検出 → 黒矩形で塗りつぶし |
+| `.jpg` `.jpeg` `.png` `.bmp` | EasyOCR で検出 → 黒矩形で塗りつぶし |
 
 ---
 
