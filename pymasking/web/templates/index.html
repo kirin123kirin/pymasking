@@ -113,14 +113,12 @@
 <main>
 
   <details class="notice">
-    <summary>⚠️ 画像・PDF の OCR マスキングには Tesseract OCR バイナリが別途必要です</summary>
+    <summary>ℹ️ 画像の OCR マスキングには EasyOCR モデルの事前ダウンロードが必要です</summary>
     <ol>
-      <li>以下の URL から installer をダウンロード<br>
-          <a href="https://github.com/UB-Mannheim/tesseract/wiki" target="_blank" rel="noopener">
-            https://github.com/UB-Mannheim/tesseract/wiki
-          </a></li>
-      <li>インストール時に「Additional language data」で「Japanese (jpn)」にチェックを入れる</li>
-      <li>インストール先（例: <code>C:\Program Files\Tesseract-OCR</code>）をシステムの PATH 環境変数に追加する</li>
+      <li>コマンドプロンプトで以下を実行してモデルをダウンロードしてください（初回のみ）<br>
+          <code>masking-download</code></li>
+      <li>社内ネットワーク環境で SSL エラーが出る場合は以下を使用してください<br>
+          <code>masking-download --no-verify-ssl</code></li>
     </ol>
   </details>
 
