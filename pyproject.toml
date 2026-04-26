@@ -32,7 +32,7 @@ dependencies = [
 
 [project.scripts]
 masking = "pymasking.cli.main:launch"
-masking-download = "pymasking.cli.main:download_models"
+masking-download = "pymasking.cli.main:_download_entry"
 
 [tool.setuptools.packages.find]
 where = ["."]

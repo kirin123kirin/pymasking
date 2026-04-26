@@ -38,11 +38,15 @@ pip install pymasking
 以下のコマンドで事前にダウンロードできます。
 
 ```bash
+# GitHub からダウンロード（デフォルト）
 masking-download
+
+# 社内サーバー / SharePoint からダウンロード
+masking-download --url https://company.sharepoint.com/sites/IT/Shared%20Documents/ocr-models/
 ```
 
 モデルは `pymasking/data/model/` に保存され、2回目以降はオフラインで動作します。  
-`masking-download` を実行しない場合は、初回の画像マスキング時に自動でダウンロードされます。
+既にダウンロード済みのファイルはスキップされます。
 
 ---
 

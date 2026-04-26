@@ -100,15 +100,31 @@ _OCR_MODELS = [
 ]
 
 
-def download_models() -> None:
+def _download_from_base_url(base_url: str, filename: str, dest_dir: Path) -> None:
+    """base_url にファイル名を結合して直接ダウンロードする（SharePoint 等）。"""
+    import requests
+    url = base_url.rstrip("/") + "/" + filename
+    resp = requests.get(url, stream=True, timeout=60)
+    resp.raise_for_status()
+    dest = dest_dir / filename
+    with open(dest, "wb") as f:
+        for chunk in resp.iter_content(chunk_size=1024 * 1024):
+            f.write(chunk)
+
+
+def download_models(url: str = "") -> None:
     """pip install pymasking 後の `masking-download` コマンド。
     EasyOCR の OCR モデルを pymasking/data/model/ に事前ダウンロードする。
+
+    --url を指定すると GitHub の代わりに社内サーバー（SharePoint 等）からDLする。
     """
     from pymasking.core.extractor.image import _MODEL_DIR
     from easyocr.utils import download_and_unzip
 
     _MODEL_DIR.mkdir(parents=True, exist_ok=True)
     click.echo(f"モデル保存先: {_MODEL_DIR}")
+    if url:
+        click.echo(f"ダウンロード元: {url}")
     click.echo("")
 
     all_exist = True
@@ -116,17 +132,43 @@ def download_models() -> None:
         dest = _MODEL_DIR / m["filename"]
         if dest.exists():
             click.echo(f"  スキップ（既存）: {m['label']}")
-        else:
-            all_exist = False
-            click.echo(f"  ダウンロード中: {m['label']}")
-            download_and_unzip(m["url"], m["filename"], str(_MODEL_DIR), verbose=False)
-            click.echo(f"  完了")
+            continue
+
+        all_exist = False
+        click.echo(f"  ダウンロード中: {m['label']}", nl=False)
+        try:
+            if url:
+                _download_from_base_url(url, m["filename"], _MODEL_DIR)
+            else:
+                download_and_unzip(m["url"], m["filename"], str(_MODEL_DIR), verbose=False)
+            click.echo("  完了")
+        except Exception as e:
+            click.echo(f"  失敗: {e}", err=True)
+            raise SystemExit(1)
 
     click.echo("")
     if all_exist:
         click.echo("すべてのモデルが既にダウンロード済みです。")
     else:
         click.echo("ダウンロード完了。次回以降はオフラインで動作します。")
+
+
+# click エントリーポイント（masking-download コマンド）
+@click.command()
+@click.option(
+    "--url", "-u",
+    default="",
+    metavar="BASE_URL",
+    help="社内サーバー（SharePoint 等）のフォルダ URL。省略時は GitHub からDL。",
+)
+def download_models_cli(url: str) -> None:
+    """EasyOCR OCR モデルを事前ダウンロードする。"""
+    download_models(url=url)
+
+
+def _download_entry() -> None:
+    """masking-download エントリーポイント。"""
+    download_models_cli(standalone_mode=True)
 
 
 if __name__ == "__main__":
