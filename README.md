@@ -48,6 +48,33 @@ masking-download --url https://company.sharepoint.com/sites/IT/Shared%20Document
 モデルは `pymasking/data/model/` に保存され、2回目以降はオフラインで動作します。  
 既にダウンロード済みのファイルはスキップされます。
 
+#### 手動でモデルをダウンロードする場合
+
+ネットワーク制限等で `masking-download` が使えない場合は、以下の手順で手動配置できます。
+
+**1. 以下の ZIP ファイルをブラウザ等でダウンロード**
+
+| ファイル | ダウンロード URL |
+|---|---|
+| `craft_mlt_25k.zip` | https://github.com/JaidedAI/EasyOCR/releases/download/pre-v1.1.6/craft_mlt_25k.zip |
+| `japanese_g2.zip` | https://github.com/JaidedAI/EasyOCR/releases/download/v1.3/japanese_g2.zip |
+| `english_g2.zip` | https://github.com/JaidedAI/EasyOCR/releases/download/v1.3/english_g2.zip |
+
+**2. ZIP を展開し、`.pth` ファイルを取り出す**
+
+各 ZIP を展開すると `.pth` ファイルが1つ含まれています。
+
+**3. `pymasking/data/model/` フォルダに配置**
+
+```
+site-packages\pymasking\data\model\
+    craft_mlt_25k.pth
+    japanese_g2.pth
+    english_g2.pth
+```
+
+> `site-packages` の場所は `python -c "import site; print(site.getsitepackages()[0])"` で確認できます。
+
 ---
 
 ## 起動方法
