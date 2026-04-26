@@ -11,18 +11,34 @@ from . import make_output_path
 # モデルの保存先: pymasking/data/model/
 _MODEL_DIR = Path(__file__).parent.parent.parent / "data" / "model"
 
+_REQUIRED_MODELS = ["craft_mlt_25k.pth", "japanese_g2.pth", "english_g2.pth"]
+
 _reader = None
+
+
+def _check_models() -> None:
+    """モデルファイルの存在を確認し、未DL の場合はエラーを送出する。"""
+    missing = [f for f in _REQUIRED_MODELS if not (_MODEL_DIR / f).exists()]
+    if missing:
+        raise RuntimeError(
+            "OCR モデルが見つかりません。先に次のコマンドを実行してください:\n"
+            "\n"
+            "    masking-download\n"
+            "\n"
+            f"未検出ファイル: {', '.join(missing)}"
+        )
 
 
 def _get_reader():
     global _reader
     if _reader is None:
         import easyocr
-        _MODEL_DIR.mkdir(parents=True, exist_ok=True)
+        _check_models()
         _reader = easyocr.Reader(
             ["ja", "en"],
             gpu=False,
             model_storage_directory=str(_MODEL_DIR),
+            download_enabled=False,  # 自動DL を完全に禁止
             verbose=False,
         )
     return _reader
@@ -32,7 +48,10 @@ def preload_models() -> None:
     """アプリ起動時にバックグラウンドで EasyOCR モデルをロードする。"""
     import logging
     try:
+        _check_models()
         _get_reader()
+    except RuntimeError as e:
+        logging.getLogger(__name__).warning("%s", e)
     except Exception as e:
         logging.getLogger(__name__).warning("EasyOCR モデルのロードに失敗しました: %s", e)
 
