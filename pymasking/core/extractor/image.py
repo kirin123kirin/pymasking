@@ -9,10 +9,7 @@ from PIL import Image
 from ..detector import detect_all, resolve_overlaps
 from . import make_output_path
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-
 _TESSERACT_CANDIDATES = [
-    str(_REPO_ROOT / "scripts" / "tesseract" / "tesseract.exe"),  # 同梱パス（最優先）
     r"C:\Program Files\Tesseract-OCR\tesseract.exe",
     r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
 ]
@@ -47,18 +44,19 @@ def _configure_tesseract() -> None:
 
     raise RuntimeError(
         "Tesseract-OCR が見つかりません。\n"
-        "setup_model.bat を実行するか、"
-        "https://github.com/UB-Mannheim/tesseract/wiki からインストーラーで "
-        "jpn 言語データを含めてインストールしてください。"
+        "https://github.com/UB-Mannheim/tesseract/wiki からインストーラーをダウンロードし、\n"
+        "「Additional language data」で「Japanese (jpn)」を選択してインストールしてください。\n"
+        "インストール後、Tesseract のフォルダ（例: C:\\Program Files\\Tesseract-OCR）を PATH に追加してください。"
     )
 
 
 def preload_models() -> None:
     """Lightweight no-op kept for app-startup compatibility (Tesseract loads per-call)."""
+    import logging
     try:
         _configure_tesseract()
-    except Exception:
-        pass
+    except Exception as e:
+        logging.getLogger(__name__).warning("Tesseract の初期化に失敗しました: %s", e)
 
 
 def _ocr_words(image) -> List[Tuple[str, Tuple[int, int, int, int]]]:
