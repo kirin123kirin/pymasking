@@ -101,26 +101,39 @@ _OCR_MODELS = [
 ]
 
 
-def _download_from_base_url(base_url: str, filename: str, dest_dir: Path) -> None:
-    """base_url にファイル名を結合して直接ダウンロードする（SharePoint 等）。"""
+def _download_file(url: str, dest: Path, verify_ssl: bool) -> None:
+    """URL からファイルをダウンロードして dest に保存する。zip は自動展開する。"""
+    import io
+    import zipfile
     import requests
-    url = base_url.rstrip("/") + "/" + filename
-    resp = requests.get(url, stream=True, timeout=60)
+
+    resp = requests.get(url, stream=True, timeout=120, verify=verify_ssl)
     resp.raise_for_status()
-    dest = dest_dir / filename
-    with open(dest, "wb") as f:
-        for chunk in resp.iter_content(chunk_size=1024 * 1024):
-            f.write(chunk)
+    data = resp.content
+
+    if url.endswith(".zip"):
+        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            for name in zf.namelist():
+                if name.endswith(".pth"):
+                    dest.write_bytes(zf.read(name))
+                    return
+        raise RuntimeError(f"zip 内に .pth ファイルが見つかりません: {url}")
+    else:
+        dest.write_bytes(data)
 
 
-def download_models(url: str = "") -> None:
+def download_models(url: str = "", verify_ssl: bool = True) -> None:
     """pip install pymasking 後の `masking-download` コマンド。
     EasyOCR の OCR モデルを pymasking/data/model/ に事前ダウンロードする。
 
     --url を指定すると GitHub の代わりに社内サーバー（SharePoint 等）からDLする。
     """
     from pymasking.core.extractor.image import _MODEL_DIR
-    from easyocr.utils import download_and_unzip
+
+    if not verify_ssl:
+        import urllib3
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        click.echo("  ⚠ SSL 検証を無効にしています（--no-verify-ssl）", err=True)
 
     _MODEL_DIR.mkdir(parents=True, exist_ok=True)
     click.echo(f"モデル保存先: {_MODEL_DIR}")
@@ -138,10 +151,8 @@ def download_models(url: str = "") -> None:
         all_exist = False
         click.echo(f"  ダウンロード中: {m['label']}", nl=False)
         try:
-            if url:
-                _download_from_base_url(url, m["filename"], _MODEL_DIR)
-            else:
-                download_and_unzip(m["url"], m["filename"], str(_MODEL_DIR), verbose=False)
+            src_url = (url.rstrip("/") + "/" + m["filename"]) if url else m["url"]
+            _download_file(src_url, dest, verify_ssl=verify_ssl)
             click.echo("  完了")
         except Exception as e:
             click.echo(f"  失敗: {e}", err=True)
@@ -162,9 +173,15 @@ def download_models(url: str = "") -> None:
     metavar="BASE_URL",
     help="社内サーバー（SharePoint 等）のフォルダ URL。省略時は GitHub からDL。",
 )
-def download_models_cli(url: str) -> None:
+@click.option(
+    "--no-verify-ssl",
+    is_flag=True,
+    default=False,
+    help="SSL 証明書の検証を無効にする（社内プロキシ環境用）。",
+)
+def download_models_cli(url: str, no_verify_ssl: bool) -> None:
     """EasyOCR OCR モデルを事前ダウンロードする。"""
-    download_models(url=url)
+    download_models(url=url, verify_ssl=not no_verify_ssl)
 
 
 def _download_entry() -> None:
