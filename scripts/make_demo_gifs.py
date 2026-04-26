@@ -8,9 +8,24 @@ from pathlib import Path
 from PIL import Image
 from playwright.sync_api import sync_playwright
 
-CHROMIUM = "/opt/pw-browsers/chromium-1194/chrome-linux/chrome"
 OUT_DIR = Path(__file__).parent.parent / "doc"
 URL = "http://127.0.0.1:55963"
+
+
+def _find_chromium() -> str | None:
+    """Playwright がインストールした Chromium を動的に探す。見つからなければ None を返す。"""
+    import glob
+    patterns = [
+        "/opt/pw-browsers/chromium*/chrome-linux/chrome",
+        "/opt/pw-browsers/chromium_headless_shell*/chrome-headless-shell-linux64/chrome-headless-shell",
+        str(Path.home() / ".cache/ms-playwright/chromium*/chrome-linux/chrome"),
+        str(Path.home() / ".cache/ms-playwright/chromium_headless_shell*/chrome-headless-shell-linux64/chrome-headless-shell"),
+    ]
+    for pattern in patterns:
+        found = sorted(glob.glob(pattern))
+        if found:
+            return found[-1]
+    return None
 
 
 def start_server():
@@ -130,11 +145,14 @@ def main():
     OUT_DIR.mkdir(exist_ok=True)
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(
-            executable_path=CHROMIUM,
-            headless=True,
-            args=["--no-sandbox", "--disable-dev-shm-usage"],
-        )
+        chromium_path = _find_chromium()
+        launch_kwargs: dict = {
+            "headless": True,
+            "args": ["--no-sandbox", "--disable-dev-shm-usage"],
+        }
+        if chromium_path:
+            launch_kwargs["executable_path"] = chromium_path
+        browser = p.chromium.launch(**launch_kwargs)
         context = browser.new_context(viewport={"width": 1024, "height": 768})
         page = context.new_page()
 
