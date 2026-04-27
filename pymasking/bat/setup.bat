@@ -36,8 +36,9 @@ echo.
 echo [4/4] Creating Desktop shortcut...
 set "DESKTOP=%USERPROFILE%\Desktop"
 if not exist "%DESKTOP%\" set "DESKTOP=%USERPROFILE%\デスクトップ"
-powershell -NoProfile -Command "$ws=New-Object -ComObject WScript.Shell; $s=$ws.CreateShortcut('%DESKTOP%\masking.lnk'); $s.TargetPath='%SCRIPTS%\masking.bat'; $s.Save()"
-if errorlevel 1 (echo [Error] Failed to create shortcut.) else (echo [OK] Shortcut created on Desktop.)
+if exist "%DESKTOP%\masking.bat" del /f "%DESKTOP%\masking.bat"
+mklink /H "%DESKTOP%\masking.bat" "%SCRIPTS%\masking.bat" >nul 2>&1
+if errorlevel 1 (echo [Error] Failed to create hard link. Try running as admin.) else (echo [OK] Desktop shortcut created.)
 
 echo.
 echo ========================================
