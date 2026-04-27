@@ -42,4 +42,5 @@ include = ["pymasking*"]
     "web/templates/*.html",
     "web/static/*",
     "data/dict/*.txt",
+    "bat/*.bat",
 ]

@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableDelayedExpansion
 
-set "RUNTIME=%~dp0"
+for /f "delims=" %%R in ("%~dp0..\..\..\..\") do set "RUNTIME=%%~fR"
 if "%RUNTIME:~-1%"=="\" set "RUNTIME=%RUNTIME:~0,-1%"
 set "SCRIPTS=%RUNTIME%\Scripts"
 set "PYTHON=%RUNTIME%\python.exe"
@@ -41,7 +41,7 @@ echo.
 
 echo [3/4] Copying batch files to Scripts folder...
 if not exist "%SCRIPTS%\" mkdir "%SCRIPTS%"
-for %%F in ("%~dp0scripts\mask.bat" "%~dp0scripts\masking.bat" "%~dp0scripts\masking-download.bat") do (
+for %%F in ("%~dp0mask.bat" "%~dp0masking.bat" "%~dp0masking-download.bat") do (
     copy /y "%%F" "%SCRIPTS%\" >nul
     if errorlevel 1 (echo [Error] Failed to copy %%~nxF) else (echo [OK] %%~nxF)
 )
