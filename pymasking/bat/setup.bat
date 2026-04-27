@@ -50,7 +50,7 @@ echo.
 echo [4/4] Copying masking.bat to Desktop...
 set "DESKTOP=%USERPROFILE%\Desktop"
 if not exist "%DESKTOP%\" set "DESKTOP=%USERPROFILE%\デスクトップ"
-copy /y "%LOCALAPPDATA%\Program\python\Scripts\masking.bat" "%DESKTOP%\masking.bat" >nul
+copy /y "%SCRIPTS%\masking.bat" "%DESKTOP%\masking.bat" >nul
 if errorlevel 1 (echo [Error] Failed to copy masking.bat to Desktop.) else (echo [OK] masking.bat copied to Desktop.)
 
 echo.
