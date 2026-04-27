@@ -18,22 +18,8 @@ echo Python  : %PYTHON%
 echo Scripts : %SCRIPTS%
 echo.
 
-set "USER_PATH="
-for /f "skip=2 delims=" %%L in ('reg query "HKCU\Environment" /v PATH 2^>nul') do (
-    set "LINE=%%L"
-    for /f "tokens=3*" %%A in ("!LINE!") do set "USER_PATH=%%A %%B"
-)
-for /l %%i in (1,1,5) do if defined USER_PATH (if "!USER_PATH:~-1!"==" " set "USER_PATH=!USER_PATH:~0,-1!")
-
 echo [1/4] Checking PATH for runtime folder...
 call :add_to_path "%RUNTIME%"
-
-set "USER_PATH="
-for /f "skip=2 delims=" %%L in ('reg query "HKCU\Environment" /v PATH 2^>nul') do (
-    set "LINE=%%L"
-    for /f "tokens=3*" %%A in ("!LINE!") do set "USER_PATH=%%A %%B"
-)
-for /l %%i in (1,1,5) do if defined USER_PATH (if "!USER_PATH:~-1!"==" " set "USER_PATH=!USER_PATH:~0,-1!")
 
 echo [2/4] Checking PATH for Scripts folder...
 call :add_to_path "%SCRIPTS%"
@@ -64,9 +50,15 @@ exit /b 0
 
 :add_to_path
 set "ADD_PATH=%~1"
-echo ;!USER_PATH!; | findstr /i /c:";%ADD_PATH%;" >nul 2>&1
-if not errorlevel 1 (echo [PATH] Already registered: %ADD_PATH% & exit /b 0)
+echo ;%PATH%; | findstr /i /c:";%ADD_PATH%;" >nul 2>&1
+if not errorlevel 1 (echo [PATH] Already in PATH: %ADD_PATH% & exit /b 0)
 echo [PATH] Adding: %ADD_PATH%
-if defined USER_PATH (setx PATH "!USER_PATH!;%ADD_PATH%") else (setx PATH "%ADD_PATH%")
+set "REG_PATH="
+for /f "skip=2 delims=" %%L in ('reg query "HKCU\Environment" /v PATH 2^>nul') do (
+    set "LINE=%%L"
+    for /f "tokens=3*" %%A in ("!LINE!") do set "REG_PATH=%%A %%B"
+)
+for /l %%i in (1,1,5) do if defined REG_PATH (if "!REG_PATH:~-1!"==" " set "REG_PATH=!REG_PATH:~0,-1!")
+if defined REG_PATH (setx PATH "!REG_PATH!;%ADD_PATH%") else (setx PATH "%ADD_PATH%")
 set "PATH=%PATH%;%ADD_PATH%"
 exit /b 0
