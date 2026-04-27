@@ -33,11 +33,11 @@ for %%F in ("%~dp0mask.bat" "%~dp0masking.bat" "%~dp0masking-download.bat") do (
 )
 echo.
 
-echo [4/4] Copying masking.bat to Desktop...
+echo [4/4] Creating Desktop shortcut...
 set "DESKTOP=%USERPROFILE%\Desktop"
 if not exist "%DESKTOP%\" set "DESKTOP=%USERPROFILE%\デスクトップ"
-copy /y "%SCRIPTS%\masking.bat" "%DESKTOP%\masking.bat" >nul
-if errorlevel 1 (echo [Error] Failed to copy masking.bat to Desktop.) else (echo [OK] masking.bat copied to Desktop.)
+powershell -NoProfile -Command "$ws=New-Object -ComObject WScript.Shell; $s=$ws.CreateShortcut('%DESKTOP%\masking.lnk'); $s.TargetPath='%SCRIPTS%\masking.bat'; $s.Save()"
+if errorlevel 1 (echo [Error] Failed to create shortcut.) else (echo [OK] Shortcut created on Desktop.)
 
 echo.
 echo ========================================
