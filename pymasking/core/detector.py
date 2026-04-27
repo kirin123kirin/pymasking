@@ -22,7 +22,9 @@ def _setup_nlp():
 try:
     _nlp = _setup_nlp()
     _HAS_GINZA = True
-except Exception:
+except Exception as _e:
+    import logging as _logging
+    _logging.getLogger(__name__).warning("ja_ginza を読み込めませんでした（正規表現のみで動作します）: %s", _e)
     _HAS_GINZA = False
     _nlp = None
 
@@ -426,8 +428,8 @@ def detect_models(text: str) -> List[Detection]:
 # ── 金額 ──────────────────────────────────────────────────────
 
 def detect_amounts(text: str) -> List[Detection]:
-    # [修正2] カンマなし金額（5000円等）も検出できるよう修正
-    pat = r"(?:\d{1,3}(?:,\d{3})+|\d{2,})(?:\.\d+)?(?:兆|億|万|千)?円"
+    # \d+ で1桁単位付き金額（3億円, 1万円）も検出する
+    pat = r"(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?(?:兆|億|万|千)?円"
     return [Detection(m.start(), m.end(), "金額", m.group()) for m in re.finditer(pat, text)]
 
 

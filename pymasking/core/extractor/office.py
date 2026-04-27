@@ -107,9 +107,7 @@ def process_pptx(src: Path, mode: MaskMode, categories=None, options=None) -> Pa
             if not shape.has_text_frame:
                 continue
             for para in shape.text_frame.paragraphs:
-                for run in para.runs:
-                    if run.text:
-                        run.text = mask_text(run.text, mode, categories=categories)
+                _mask_paragraph(para, mode, categories=categories)
 
     prs.save(out)
     return out
