@@ -18,14 +18,14 @@ echo Python  : %PYTHON%
 echo Scripts : %SCRIPTS%
 echo.
 
-echo [1/4] Checking PATH for runtime folder...
+echo [1/3] Checking PATH for runtime folder...
 call :add_to_path "%RUNTIME%"
 
-echo [2/4] Checking PATH for Scripts folder...
+echo [2/3] Checking PATH for Scripts folder...
 call :add_to_path "%SCRIPTS%"
 echo.
 
-echo [3/4] Copying batch files to Scripts folder...
+echo [3/3] Copying batch files to Scripts folder...
 if not exist "%SCRIPTS%\" mkdir "%SCRIPTS%"
 for %%F in ("%~dp0mask.bat" "%~dp0masking.bat" "%~dp0masking-download.bat") do (
     copy /y "%%F" "%SCRIPTS%\" >nul
@@ -33,14 +33,6 @@ for %%F in ("%~dp0mask.bat" "%~dp0masking.bat" "%~dp0masking-download.bat") do (
 )
 echo.
 
-echo [4/4] Creating Desktop shortcut...
-set "DESKTOP=%USERPROFILE%\Desktop"
-if not exist "%DESKTOP%\" set "DESKTOP=%USERPROFILE%\デスクトップ"
-if exist "%DESKTOP%\masking.bat" del /f "%DESKTOP%\masking.bat"
-mklink /H "%DESKTOP%\masking.bat" "%SCRIPTS%\masking.bat" >nul 2>&1
-if errorlevel 1 (echo [Error] Failed to create hard link. Try running as admin.) else (echo [OK] Desktop shortcut created.)
-
-echo.
 echo ========================================
 echo  Setup complete!
 echo  Open a new command prompt and run:
