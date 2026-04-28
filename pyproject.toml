@@ -43,4 +43,5 @@ include = ["pymasking*"]
     "web/static/*",
     "data/dict/*.txt",
     "bat/*.bat",
+    "bat/*.lnk",
 ]
