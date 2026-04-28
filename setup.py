@@ -7,6 +7,7 @@ setup(
             "pymasking/bat/masking.bat",
             "pymasking/bat/masking-download.bat",
             "pymasking/bat/masking.lnk",
+            "pymasking/bat/pymasking.ico",
         ])
     ]
 )

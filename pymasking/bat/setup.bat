@@ -27,7 +27,7 @@ echo.
 
 echo [3/3] Copying batch files to Scripts folder...
 if not exist "%SCRIPTS%\" mkdir "%SCRIPTS%"
-for %%F in ("%~dp0mask.bat" "%~dp0masking.bat" "%~dp0masking-download.bat" "%~dp0masking.lnk") do (
+for %%F in ("%~dp0mask.bat" "%~dp0masking.bat" "%~dp0masking-download.bat" "%~dp0masking.lnk" "%~dp0pymasking.ico") do (
     copy /y "%%F" "%SCRIPTS%\" >nul
     if errorlevel 1 (echo [Error] Failed to copy %%~nxF) else (echo [OK] %%~nxF)
 )
